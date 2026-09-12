@@ -22,8 +22,11 @@ cbuffer Constants : register(b0)
     float4 uBounds  : packoffset(c4);
 };
 
-float2 GetGlobalUV(float4 posScene, float4 bounds) {
-    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+float2 GetGlobalUV(float4 posScene, float4 bounds, float2 fallbackUv) {
+    if (bounds.z <= 1.0 || bounds.w <= 1.0) {
+        return fallbackUv;
+    }
+    return (posScene.xy - bounds.xy) / bounds.zw;
 }
 
 #define PI 3.14159265

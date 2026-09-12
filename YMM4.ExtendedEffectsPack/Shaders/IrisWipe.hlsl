@@ -22,8 +22,11 @@ cbuffer Constants : register(b0)
     float4 uBounds  : packoffset(c4);
 };
 
-float2 GetGlobalUV(float4 posScene, float4 bounds) {
-    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+float2 GetGlobalUV(float4 posScene, float4 bounds, float2 fallbackUv) {
+    if (bounds.z <= 1.0 || bounds.w <= 1.0) {
+        return fallbackUv;
+    }
+    return (posScene.xy - bounds.xy) / bounds.zw;
 }
 
 #define PI 3.14159265
@@ -55,11 +58,11 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv = GetGlobalUV(posScene, uBounds);
+    float2 uv = GetGlobalUV(posScene, uBounds, uv0.xy);
     float p = saturate(uMix / 100.0);
     p = p * p * (3.0 - 2.0 * p);
     float2 c = float2(uAngle, uSpread);
-    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
     float2 d = (uv - c) * float2(aspect, 1.0);
     float r = length(d);
     float radius = p * 1.15 * max(aspect, 1.0);

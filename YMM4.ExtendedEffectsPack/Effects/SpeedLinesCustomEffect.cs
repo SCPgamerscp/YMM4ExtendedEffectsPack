@@ -1,3 +1,4 @@
+using Vortice;
 using Vortice.Direct2D1;
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Player.Video;
@@ -26,6 +27,11 @@ internal sealed class SpeedLinesCustomEffect : D2D1CustomShaderEffectBase, IPack
         {
             base.SetDrawInfo(drawInfo);
             drawInfo.SetPixelShader(GUID_PixelShader, PixelOptions.None);
+        }
+        public override void MapInputRectsToOutputRect(RawRect[] inputRects, RawRect[] inputOpaqueSubRects, out RawRect outputRect, out RawRect outputOpaqueSubRect)
+        {
+            base.MapInputRectsToOutputRect(inputRects, inputOpaqueSubRects, out outputRect, out outputOpaqueSubRect);
+            UpdateConstants();
         }
         [CustomEffectProperty(PropertyType.Float, 0)] public float Strength { get => _cb.Strength; set { _cb.Strength = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 1)] public float Size { get => _cb.Size; set { _cb.Size = value; UpdateConstants(); } }
@@ -57,8 +63,8 @@ internal sealed class SpeedLinesCustomEffect : D2D1CustomShaderEffectBase, IPack
             {
                 _cb.BoundsLeft = 0;
                 _cb.BoundsTop = 0;
-                _cb.BoundsWidth = 1f;
-                _cb.BoundsHeight = 1f;
+                _cb.BoundsWidth = 0f;
+                _cb.BoundsHeight = 0f;
             }
             drawInformation?.SetPixelShaderConstantBuffer(_cb);
         }

@@ -23,8 +23,11 @@ cbuffer Constants : register(b0)
     float4 uBounds  : packoffset(c4);
 };
 
-float2 GetGlobalUV(float4 posScene, float4 bounds) {
-    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+float2 GetGlobalUV(float4 posScene, float4 bounds, float2 fallbackUv) {
+    if (bounds.z <= 1.0 || bounds.w <= 1.0) {
+        return fallbackUv;
+    }
+    return (posScene.xy - bounds.xy) / bounds.zw;
 }
 
 float4 samp0(float2 uv) {
@@ -37,7 +40,7 @@ float4 samp1(float2 uv) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
     float2 uv = uv0.xy;
     float4 src = samp0(uv);
     if (uFlagB < 0.5) return src;
