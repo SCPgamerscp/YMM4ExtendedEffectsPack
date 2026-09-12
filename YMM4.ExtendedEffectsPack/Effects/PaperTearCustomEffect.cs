@@ -1,4 +1,4 @@
-using YukkuriMovieMaker.Commons;
+﻿using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Player.Video;
 using YMM4.ExtendedEffectsPack.Common;
 
@@ -21,6 +21,11 @@ internal sealed class PaperTearCustomEffect : D2D1CustomShaderEffectBase, IPackS
     {
         PackUniforms _cb;
         public Impl() : base(ShaderResourceUri.Get("PaperTear")) {}
+        public override void SetDrawInfo(ID2D1DrawInfo drawInfo)
+        {
+            base.SetDrawInfo(drawInfo);
+            drawInfo.SetPixelShader(GUID_PixelShader, PixelOptions.TrivialSampling);
+        }
         [CustomEffectProperty(PropertyType.Float, 0)] public float Strength { get => _cb.Strength; set { _cb.Strength = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 1)] public float Size { get => _cb.Size; set { _cb.Size = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 2)] public float Speed { get => _cb.Speed; set { _cb.Speed = value; UpdateConstants(); } }

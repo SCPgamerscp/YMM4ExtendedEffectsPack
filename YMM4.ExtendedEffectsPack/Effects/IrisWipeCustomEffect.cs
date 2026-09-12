@@ -21,6 +21,11 @@ internal sealed class IrisWipeCustomEffect : D2D1CustomShaderEffectBase, IPackSh
     {
         PackUniforms _cb;
         public Impl() : base(ShaderResourceUri.Get("IrisWipe")) {}
+        public override void SetDrawInfo(ID2D1DrawInfo drawInfo)
+        {
+            base.SetDrawInfo(drawInfo);
+            drawInfo.SetPixelShader(GUID_PixelShader, PixelOptions.TrivialSampling);
+        }
         [CustomEffectProperty(PropertyType.Float, 0)] public float Strength { get => _cb.Strength; set { _cb.Strength = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 1)] public float Size { get => _cb.Size; set { _cb.Size = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 2)] public float Speed { get => _cb.Speed; set { _cb.Speed = value; UpdateConstants(); } }
