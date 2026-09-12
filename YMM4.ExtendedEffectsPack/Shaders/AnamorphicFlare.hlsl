@@ -59,15 +59,53 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float2 uv = uv0.xy; float4 src=samp(uv);
-    float3 streak=0; float wsum=0;
-    [unroll] for (int i=-10;i<=10;i++) {
-        float w=exp(-i*i*0.04);
-        float4 s=samp(uv+float2(i*0.01*uSize,0));
-        float lm=smoothstep(uMix,1,lum(s.rgb));
-        streak+=s.rgb*lm*w; wsum+=w;
+    float2 uv = uv0.xy;
+    float4 src = samp(uv);
+    
+    // 画像の幅（ピクセル数）。未確定時は標準1080pxをフォールバックとして使用
+    float imgW = (uBounds.z > 1.0) ? uBounds.z : 1080.0;
+    float invW = 1.0 / imgW;
+    
+    // 画面解像度に関わらず一定の物理ピクセル幅で伸びるシネマティックストリーク
+    // uSize: デフォルト0.8（スライダー範囲0〜1.5）
+    float maxRadiusPx = max(uSize * 350.0, 1.0);
+    
+    float3 streak = 0;
+    float wsum = 0;
+    
+    // 多段階サンプリング (31タップ: -15 .. +15)
+    // 指数マッピングにより、中心の明るいコアから外側へ滑らかに尾を引く
+    [unroll] for (int i = -15; i <= 15; i++) {
+        float normDist = (float)i / 15.0; // -1.0 .. 1.0
+        float signVal = (normDist >= 0.0) ? 1.0 : -1.0;
+        float pxDist = signVal * pow(abs(normDist), 1.6) * maxRadiusPx;
+        
+        float2 sampleUv = uv + float2(pxDist * invW, 0.0);
+        float4 s = samp(sampleUv);
+        
+        // 発光しきい値 (uMix: デフォルト0.62)
+        float lm = smoothstep(uMix, 1.0, lum(s.rgb));
+        
+        // 指数減衰ウェイト
+        float w = exp(-abs(normDist) * 2.5);
+        
+        streak += s.rgb * lm * w;
+        wsum += w;
     }
-    streak/=max(wsum,1);
-    float3 acc=src.rgb + streak*float3(uColorR,uColorG,uColorB)*uStrength*1.4;
-    return float4(acc,1);
+    streak /= max(wsum, 1e-4);
+    
+    // レンズゴースト (uCount: Ghosts, デフォルト0.35)
+    float3 ghostCol = 0;
+    if (uCount > 0.02) {
+        float2 ghostUv = float2(1.0 - uv.x, uv.y);
+        float4 gs = samp(ghostUv);
+        float glm = smoothstep(uMix * 1.1, 1.0, lum(gs.rgb));
+        ghostCol = gs.rgb * glm * uCount * 0.3;
+    }
+    
+    float3 flareColor = float3(uColorR, uColorG, uColorB);
+    float3 flareTotal = (streak + ghostCol) * flareColor * (uStrength * 1.8);
+    
+    float3 acc = src.rgb + flareTotal;
+    return float4(acc, src.a);
 }

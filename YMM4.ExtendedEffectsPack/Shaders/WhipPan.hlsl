@@ -63,17 +63,22 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     float p = saturate(uMix/100.0);
     float ang = uAngle * 0.01745329251;
     float2 dir = float2(cos(ang), sin(ang));
+    
+    // 画像サイズ（ピクセル数）に応じた等方性比率補正
+    float2 imgDims = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1080.0, 1080.0);
+    float2 pxDir = (dir * 200.0) / imgDims;
+    
     float peak = pow(1 - abs(p*2-1), 0.65);
     float smear = uStrength * 0.22 * peak;
     float3 acc = 0;
     [unroll] for (int i=0;i<16;i++) {
         float t = (i/15.0 - 0.5);
-        acc += samp(uv + dir * t * smear).rgb;
+        acc += samp(uv + pxDir * t * smear).rgb;
     }
     acc /= 16;
     float ch = smear * uSpread * 0.55;
-    acc.r = lerp(acc.r, samp(uv + dir*ch).r, 0.65);
-    acc.b = lerp(acc.b, samp(uv - dir*ch).b, 0.65);
+    acc.r = lerp(acc.r, samp(uv + pxDir*ch).r, 0.65);
+    acc.b = lerp(acc.b, samp(uv - pxDir*ch).b, 0.65);
     if (uFlagA>0.5) {
         float bo = smoothstep(0.38,0.5,p)*(1-smoothstep(0.5,0.62,p));
         acc *= 1 - bo*0.92;

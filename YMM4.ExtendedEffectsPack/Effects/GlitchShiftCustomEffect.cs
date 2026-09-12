@@ -33,6 +33,17 @@ internal sealed class GlitchShiftCustomEffect : D2D1CustomShaderEffectBase, IPac
             base.MapInputRectsToOutputRect(inputRects, inputOpaqueSubRects, out outputRect, out outputOpaqueSubRect);
             UpdateConstants();
         }
+        public override void MapOutputRectToInputRects(RawRect outputRect, RawRect[] inputRects)
+        {
+            int left = inputRect.Left;
+            int right = inputRect.Right;
+            if (left >= right)
+            {
+                left = outputRect.Left;
+                right = outputRect.Right;
+            }
+            inputRects[0] = new RawRect(left, outputRect.Top, right, outputRect.Bottom);
+        }
         [CustomEffectProperty(PropertyType.Float, 0)] public float Strength { get => _cb.Strength; set { _cb.Strength = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 1)] public float Size { get => _cb.Size; set { _cb.Size = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 2)] public float Speed { get => _cb.Speed; set { _cb.Speed = value; UpdateConstants(); } }

@@ -33,6 +33,11 @@ internal sealed class LivingFlameCustomEffect : D2D1CustomShaderEffectBase, IPac
             base.MapInputRectsToOutputRect(inputRects, inputOpaqueSubRects, out outputRect, out outputOpaqueSubRect);
             UpdateConstants();
         }
+        public override void MapOutputRectToInputRects(RawRect outputRect, RawRect[] inputRects)
+        {
+            int margin = (int)System.Math.Ceiling(System.Math.Max(_cb.Strength * 0.8f, 64f));
+            inputRects[0] = new RawRect(outputRect.Left - margin, outputRect.Top - margin, outputRect.Right + margin, outputRect.Bottom + margin);
+        }
         [CustomEffectProperty(PropertyType.Float, 0)] public float Strength { get => _cb.Strength; set { _cb.Strength = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 1)] public float Size { get => _cb.Size; set { _cb.Size = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 2)] public float Speed { get => _cb.Speed; set { _cb.Speed = value; UpdateConstants(); } }

@@ -59,17 +59,27 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float2 uv = uv0.xy; float4 src=samp(uv);
-    float2 px=uSize*float2(0.001,0.001);
-    float3 acc=0; float wsum=0;
-    [unroll] for (int y=-3;y<=3;y++)
-    [unroll] for (int x=-3;x<=3;x++) {
-        float w=exp(-(x*x+y*y)*0.14);
-        float3 s=samp(uv+float2(x,y)*px).rgb;
-        acc+=s*smoothstep(uMix,1,lum(s))*w; wsum+=w;
+    float2 uv = uv0.xy;
+    float4 src = samp(uv);
+    
+    // 画像サイズ（ピクセル数）に応じた等方性ピクセルステップ（縦横の比率補正）
+    float2 imgDims = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1080.0, 1080.0);
+    float2 px = (uSize * 2.5) / imgDims;
+    
+    float3 acc = 0;
+    float wsum = 0;
+    [unroll] for (int y = -4; y <= 4; y++) {
+        [unroll] for (int x = -4; x <= 4; x++) {
+            float distSq = x * x + y * y;
+            float w = exp(-distSq * 0.18);
+            float3 s = samp(uv + float2(x, y) * px).rgb;
+            acc += s * smoothstep(uMix, 1.0, lum(s)) * w;
+            wsum += w;
+        }
     }
-    acc/=max(wsum,1e-4);
-    float3 col=src.rgb+acc*uStrength;
-    col.r+=uSpread*0.08; col.b-=uSpread*0.04;
-    return float4(col,1);
+    acc /= max(wsum, 1e-4);
+    float3 col = src.rgb + acc * uStrength;
+    col.r += uSpread * 0.08;
+    col.b -= uSpread * 0.04;
+    return float4(col, src.a);
 }
