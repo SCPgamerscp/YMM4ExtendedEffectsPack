@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- YukkuriMovieMaker4.exe があるフォルダ。末尾のバックスラッシュ必須。 -->
+    <YMM4DirPath Condition="'$(YMM4DirPath)'==''">C:\Program Files\YukkuriMovieMaker4\</YMM4DirPath>
+    <FxcPath Condition="'$(FxcPath)'==''">fxc.exe</FxcPath>
+  </PropertyGroup>
+</Project>
