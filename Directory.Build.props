@@ -4,4 +4,5 @@
     <YMM4DirPath Condition="'$(YMM4DirPath)'==''">C:\Program Files\YukkuriMovieMaker4\</YMM4DirPath>
     <FxcPath Condition="'$(FxcPath)'==''">fxc.exe</FxcPath>
   </PropertyGroup>
+  <Import Project="$(MSBuildThisFileDirectory)Directory.Build.props.user" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.props.user')" />
 </Project>

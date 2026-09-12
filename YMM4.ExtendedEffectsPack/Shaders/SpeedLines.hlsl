@@ -54,8 +54,8 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     float2 p=uv-c; float ang=atan2(p.y,p.x); float rad=length(p);
     float dens=max(uCount,8);
     float slice=abs(frac(ang/(2*PI)*dens)-0.5);
-    float line=(1-smoothstep(0,0.04,slice))*step(0.22, hash11(floor(ang*dens)));
+    float lineMask=(1-smoothstep(0,0.04,slice))*step(0.22, hash11(floor(ang*dens)));
     float mask=smoothstep(uSize*0.15,uSize,rad);
     float4 src=samp(uv);
-    return float4(lerp(src.rgb, float3(uColorR,uColorG,uColorB), line*mask*uStrength),1);
+    return float4(lerp(src.rgb, float3(uColorR,uColorG,uColorB), lineMask*mask*uStrength),1);
 }

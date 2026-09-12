@@ -61,10 +61,10 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     else if (uMode<1.5) uv2 += (float2(hash21(float2(col,row)), hash21(float2(row,col)))-0.5)*uSpread*0.22*peak;
     else uv2.x += step(0.55,h)*(h2-0.5)*uSpread*0.45*peak;
     float split=uSpread*0.04*peak;
-    float3 col=float3(samp(uv2+float2(split,0)).r, samp(uv2).g, samp(uv2-float2(split,0)).b);
+    float3 color=float3(samp(uv2+float2(split,0)).r, samp(uv2).g, samp(uv2-float2(split,0)).b);
     float n=hash21(uv*800+floor(uTime*60));
-    col=lerp(col, n, uStrength*peak*0.35*step(0.82,n));
+    color=lerp(color, n, uStrength*peak*0.35*step(0.82,n));
     float hold=smoothstep(0,0.12,p)*(1-smoothstep(0.88,1,p));
-    col=lerp(samp(uv).rgb, col, hold);
-    return float4(col,1);
+    color=lerp(samp(uv).rgb, color, hold);
+    return float4(color,1);
 }

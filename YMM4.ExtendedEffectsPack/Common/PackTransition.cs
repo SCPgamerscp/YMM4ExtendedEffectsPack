@@ -30,16 +30,16 @@ public abstract class PackTransitionParameter : TransitionParameterBase
     public EasingMode EasingMode { get => _easingMode; set => Set(ref _easingMode, value); }
 
     public abstract TransitionEnvelope Envelope { get; }
-    public abstract PackUniforms BuildStyle(double frame, double length, int fps);
+    public abstract PackUniforms BuildStyle(long frame, long length, int fps);
 
-    public PackUniforms BuildUniforms(double frame, double length, int fps)
+    public PackUniforms BuildUniforms(long frame, long length, int fps)
     {
-        double raw = length <= 1 ? 1 : Math.Clamp(frame / (length - 1), 0, 1);
+        double raw = length <= 1 ? 1 : Math.Clamp((double)frame / (length - 1), 0, 1);
         float p = (float)Math.Clamp(Easing.GetValue(EasingType, EasingMode, raw), 0, 1);
         if (raw <= 0) p = 0;
         if (raw >= 1) p = 1;
         var u = BuildStyle(frame, length, fps);
-        u.Time = (float)(frame / Math.Max(1, fps));
+        u.Time = (float)((double)frame / Math.Max(1, fps));
         u.Pad = p;
         u.Mix = Envelope switch
         {

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
 using Vortice.Direct2D1;
 using YukkuriMovieMaker.Commons;
@@ -45,7 +45,7 @@ public sealed class WhipPanTransitionParameter : PackTransitionParameter
 
     protected override IEnumerable<IAnimatable> GetAnimatables() => [Direction, Smear, Chroma];
 
-    public override PackUniforms BuildStyle(double frame, double length, int fps) => new PackUniforms
+    public override PackUniforms BuildStyle(long frame, long length, int fps) => new PackUniforms
     {
 
             Strength = (float)Smear.GetValue(frame, length, fps), Size = 0f, Speed = 0f,

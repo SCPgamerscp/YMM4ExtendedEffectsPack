@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
 using Vortice.Direct2D1;
 using YukkuriMovieMaker.Commons;
@@ -45,7 +45,7 @@ public sealed class PrismWhipTransitionParameter : PackTransitionParameter
 
     protected override IEnumerable<IAnimatable> GetAnimatables() => [Angle, Blur, Chromatic, Zoom];
 
-    public override PackUniforms BuildStyle(double frame, double length, int fps) => new PackUniforms
+    public override PackUniforms BuildStyle(long frame, long length, int fps) => new PackUniforms
     {
 
             Strength = (float)Blur.GetValue(frame, length, fps),

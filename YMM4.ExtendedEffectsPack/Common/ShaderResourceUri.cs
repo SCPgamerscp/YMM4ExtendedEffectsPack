@@ -1,3 +1,4 @@
+using System.IO;
 using System.Reflection;
 
 namespace YMM4.ExtendedEffectsPack.Common;

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
 using Vortice.Direct2D1;
 using YukkuriMovieMaker.Commons;
@@ -50,7 +50,7 @@ public sealed class TheaterCurtainTransitionParameter : PackTransitionParameter
 
     protected override IEnumerable<IAnimatable> GetAnimatables() => [Folds];
 
-    public override PackUniforms BuildStyle(double frame, double length, int fps) => new PackUniforms
+    public override PackUniforms BuildStyle(long frame, long length, int fps) => new PackUniforms
     {
 
             Strength = 0f, Size = 0f, Speed = 0f, Angle = 0f,
