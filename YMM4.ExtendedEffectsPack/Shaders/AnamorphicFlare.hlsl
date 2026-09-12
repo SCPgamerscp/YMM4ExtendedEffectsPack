@@ -62,49 +62,71 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     float2 uv = uv0.xy;
     float4 src = samp(uv);
     
-    // 画像の幅（ピクセル数）。未確定時は標準1080pxをフォールバックとして使用
-    float imgW = (uBounds.z > 1.0) ? uBounds.z : 1080.0;
-    float invW = 1.0 / imgW;
+    // Direct2D が提供する正確なテクセルサイズ (uv0.zw)
+    // プレビューの縮小表示でも出力時でも、常にその描画解像度の1テクセルを正確に指す
+    float2 texelSize = uv0.zw;
+    if (texelSize.x <= 0.0) {
+        texelSize.x = 1.0 / max(uBounds.z, 1080.0);
+    }
     
-    // 画面解像度に関わらず一定の物理ピクセル幅で伸びるシネマティックストリーク
-    // uSize: デフォルト0.8（スライダー範囲0〜1.5）
-    float maxRadiusPx = max(uSize * 350.0, 1.0);
+    // 水平ストリークの広がり
+    // uSize: デフォルト0.8（スライダー0〜1.5）
+    // 等間隔ガウスサンプリングにより、縦線の縞模様（バンディング）を完全防止
+    float stepPx = max(uSize * 5.0, 1.0);
+    float2 stepUv = float2(stepPx * texelSize.x, 0.0);
     
     float3 streak = 0;
     float wsum = 0;
     
-    // 多段階サンプリング (31タップ: -15 .. +15)
-    // 指数マッピングにより、中心の明るいコアから外側へ滑らかに尾を引く
-    [unroll] for (int i = -15; i <= 15; i++) {
-        float normDist = (float)i / 15.0; // -1.0 .. 1.0
-        float signVal = (normDist >= 0.0) ? 1.0 : -1.0;
-        float pxDist = signVal * pow(abs(normDist), 1.6) * maxRadiusPx;
+    // 1. コアストリーク (35タップ: -17 .. +17)
+    [unroll] for (int i = -17; i <= 17; i++) {
+        float norm = (float)i / 17.0;
+        float w = exp(-norm * norm * 3.0);
         
-        float2 sampleUv = uv + float2(pxDist * invW, 0.0);
+        float2 sampleUv = uv + (float)i * stepUv;
         float4 s = samp(sampleUv);
         
-        // 発光しきい値 (uMix: デフォルト0.62)
-        float lm = smoothstep(uMix, 1.0, lum(s.rgb));
-        
-        // 指数減衰ウェイト
-        float w = exp(-abs(normDist) * 2.5);
+        float lumVal = lum(s.rgb);
+        float lm = smoothstep(uMix - 0.08, uMix + 0.12, lumVal);
         
         streak += s.rgb * lm * w;
         wsum += w;
     }
     streak /= max(wsum, 1e-4);
     
+    // 2. 広域ストリーク (25タップ: -12 .. +12)
+    // 中心から遠くまで滑らかに尾を引くシネマティックロングテール
+    float3 wideStreak = 0;
+    float wideWsum = 0;
+    float2 wideStepUv = float2(stepPx * 3.5 * texelSize.x, 0.0);
+    [unroll] for (int j = -12; j <= 12; j++) {
+        float wNorm = (float)j / 12.0;
+        float w = exp(-wNorm * wNorm * 3.2);
+        
+        float2 sampleUv = uv + (float)j * wideStepUv;
+        float4 s = samp(sampleUv);
+        
+        float lumVal = lum(s.rgb);
+        float lm = smoothstep(uMix - 0.05, uMix + 0.15, lumVal);
+        
+        wideStreak += s.rgb * lm * w;
+        wideWsum += w;
+    }
+    wideStreak /= max(wideWsum, 1e-4);
+    
+    float3 totalStreak = streak * 0.65 + wideStreak * 0.35;
+    
     // レンズゴースト (uCount: Ghosts, デフォルト0.35)
     float3 ghostCol = 0;
     if (uCount > 0.02) {
         float2 ghostUv = float2(1.0 - uv.x, uv.y);
         float4 gs = samp(ghostUv);
-        float glm = smoothstep(uMix * 1.1, 1.0, lum(gs.rgb));
-        ghostCol = gs.rgb * glm * uCount * 0.3;
+        float glm = smoothstep(uMix * 1.05, 1.0, lum(gs.rgb));
+        ghostCol = gs.rgb * glm * uCount * 0.35;
     }
     
     float3 flareColor = float3(uColorR, uColorG, uColorB);
-    float3 flareTotal = (streak + ghostCol) * flareColor * (uStrength * 1.8);
+    float3 flareTotal = (totalStreak + ghostCol) * flareColor * (uStrength * 1.8);
     
     float3 acc = src.rgb + flareTotal;
     return float4(acc, src.a);
