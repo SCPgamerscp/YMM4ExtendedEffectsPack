@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,13 +55,15 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy;
-    uv.x+=(hash11(floor(uv.y*40)+floor(uTime*12))-0.5)*0.08*uSpread*uStrength;
-    float ch=0.004*uStrength;
-    float3 col=float3(samp(uv+float2(ch,0)).r, samp(uv).g, samp(uv-float2(ch,0)).b);
-    float scan=sin(uv.y*800*PI)*0.5+0.5;
-    col*=1-scan*uMix*0.35;
-    if (uFlagA>0.5 && uv.y>0.82) col=lerp(col, hash21(float2(uv.x*40, floor(uv.y*90)+uTime*20)), 0.7*uStrength);
-    if (uFlagB>0.5) { col=lerp(col, lum(col), 0.28); col.r*=1.05; col.b*=0.92; }
-    return float4(col,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float shift = (hash11(floor(gUv.y * 40.0) + floor(uTime * 12.0)) - 0.5) * 0.08 * uSpread * uStrength;
+    float2 uv = uv0.xy;
+    uv.x += shift;
+    float ch = 0.004 * uStrength;
+    float3 col = float3(samp(uv + float2(ch, 0.0)).r, samp(uv).g, samp(uv - float2(ch, 0.0)).b);
+    float scan = sin(gUv.y * 800.0 * PI) * 0.5 + 0.5;
+    col *= 1.0 - scan * uMix * 0.35;
+    if (uFlagA > 0.5 && gUv.y > 0.82) col = lerp(col, hash21(float2(gUv.x * 40.0, floor(gUv.y * 90.0) + uTime * 20.0)), 0.7 * uStrength);
+    if (uFlagB > 0.5) { col = lerp(col, lum(col), 0.28); col.r *= 1.05; col.b *= 0.92; }
+    return float4(col, 1.0);
 }

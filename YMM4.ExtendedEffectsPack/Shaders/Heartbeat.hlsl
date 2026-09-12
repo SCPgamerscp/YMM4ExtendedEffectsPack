@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,18 +55,20 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy;
-    float t=frac(uTime*(uSpeed/60));
-    float beat=0;
-    if (uMode<0.5) {
-        if (t<0.14) beat=sin(t/0.14*PI);
-        else if (t>=0.20 && t<0.42) beat=0.72*sin((t-0.20)/0.22*PI);
-    } else beat=pow(0.5+0.5*sin(t*PI*2),3);
-    float scale=1+beat*(uStrength/100);
-    float2 cuv=(uv-0.5)/scale+0.5;
-    float ch=uSpread*beat*0.002;
-    float3 col=float3(samp(cuv+float2(ch,0)).r, samp(cuv).g, samp(cuv-float2(ch,0)).b);
-    float vig=length(uv-0.5)*1.414;
-    col=lerp(col, float3(uColorR,uColorG,uColorB), vig*beat*uMix);
-    return float4(col,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float cycle = frac(uTime * uSpeed);
+    float b1 = exp(-cycle * 18.0) * sin(cycle * 30.0);
+    float c2 = frac(cycle + 0.22);
+    float b2 = exp(-c2 * 22.0) * sin(c2 * 35.0) * 0.7;
+    float pulse = max(0.0, b1 + b2) * uStrength;
+    float z = 1.0 + pulse * uSize * 0.5;
+    float2 zuv_g = (gUv - 0.5) / z + 0.5;
+    float2 delta = zuv_g - gUv;
+    float2 zuv = uv0.xy + delta;
+    float4 col = samp(zuv);
+    col.r += pulse * uSpread * 0.35;
+    float r = length((gUv - 0.5) * float2(aspect, 1.0));
+    col.rgb *= 1.0 - pulse * smoothstep(0.2, 0.9, r) * uMix;
+    return col;
 }

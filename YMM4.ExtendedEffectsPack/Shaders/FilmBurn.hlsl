@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,7 +55,8 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float p=uMix/100;
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float2 uv = uv0.xy; float p=uMix/100;
     float band=uv.x-(p*1.6-0.3);
     float heat=exp(-pow(band/(0.18*max(uSize,0.1)),2));
     float3 tone=uMode<0.5?float3(1,0.55,0.18):(uMode<1.5?hsv2rgb(float3(frac(uv.x*0.4),0.55,1)):float3(0.45,0.85,1));

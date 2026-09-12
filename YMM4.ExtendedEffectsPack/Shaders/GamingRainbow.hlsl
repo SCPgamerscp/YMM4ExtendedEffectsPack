@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,11 +55,21 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float4 src=samp(uv);
-    float ang=uAngle*PI/180;
-    float wave=dot(uv-0.5, float2(cos(ang),sin(ang)));
-    float hue=frac(uTime*uSpeed*0.05 + (uMode>0.5 && uMode<1.5 ? wave*1.8 : 0));
-    float3 rainbow=hsv2rgb(float3(hue,0.95,1))*uStrength*0.55;
-    float3 outc=src.rgb+rainbow*0.7*lum(src.rgb+0.15);
-    return float4(outc,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float4 src = samp(uv0.xy);
+    float hue = frac(uTime * uSpeed * 0.2);
+    if (uMode < 0.5) hue = frac(gUv.x * uSpread + hue);
+    else if (uMode < 1.5) {
+        float2 d = (gUv - 0.5) * float2(aspect, 1.0);
+        hue = frac(length(d) * uSpread * 2.0 - hue);
+    } else {
+        float2 d = (gUv - 0.5) * float2(aspect, 1.0);
+        hue = frac(atan2(d.y, d.x) / (2.0 * PI) + hue);
+    }
+    float3 rb = hsv2rgb(float3(hue, uCount, 1.0));
+    float lumVal = lum(src.rgb);
+    float3 blended = lerp(src.rgb, src.rgb * rb * 1.8, uStrength);
+    blended = lerp(blended, rb, uMix * (1.0 - lumVal * 0.5));
+    return float4(blended, src.a);
 }

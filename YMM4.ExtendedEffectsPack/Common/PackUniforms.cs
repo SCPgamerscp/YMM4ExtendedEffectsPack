@@ -21,4 +21,8 @@ public struct PackUniforms
     public float ColorG;
     public float ColorB;
     public float Pad;
+    public float BoundsLeft;
+    public float BoundsTop;
+    public float BoundsWidth;
+    public float BoundsHeight;
 }

@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,12 +55,17 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float p=uMix/100; float axis=uMode<0.5?uv.y:uv.x;
-    float d=axis-p; float scan=exp(-pow(d/max(uSize,0.01),2));
-    float2 warped=uv;
-    if (uMode<0.5) warped.x+=sin(uv.y*40)*uSpread*scan; else warped.y+=sin(uv.x*40)*uSpread*scan;
-    float4 live=samp(warped); float freeze=step(axis,p);
-    float4 col=lerp(live, samp(uv), freeze*uStrength);
-    col.rgb+=float3(uColorR,uColorG,uColorB)*scan*1.2;
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float p = uMix / 100.0;
+    float axis = uMode < 0.5 ? gUv.y : gUv.x;
+    float d = axis - p;
+    float scan = exp(-pow(d / max(uSize, 0.01), 2.0));
+    float2 warped = uv0.xy;
+    if (uMode < 0.5) warped.x += sin(gUv.y * 40.0) * uSpread * scan;
+    else warped.y += sin(gUv.x * 40.0) * uSpread * scan;
+    float4 live = samp(warped);
+    float freeze = step(axis, p);
+    float4 col = lerp(live, samp(uv0.xy), freeze * uStrength);
+    col.rgb += float3(uColorR, uColorG, uColorB) * scan * 1.2;
     return col;
 }

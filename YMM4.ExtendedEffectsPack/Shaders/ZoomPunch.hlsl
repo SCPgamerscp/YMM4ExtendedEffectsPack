@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,17 +55,21 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float p=saturate(uMix/100.0);
-    float2 c=float2(uAngle, saturate(uCount));
-    float hit=clamp(uStrength,0.2,1);
-    float pulse=1-pow(abs(p*2-1), lerp(1.4,4.5,hit));
-    float z=1+pulse*uSize*1.6;
-    float2 cuv=(uv-c)/z+c;
-    float ch=pulse*uSpread*0.018;
-    float2 dir=normalize(uv-c+1e-4);
-    float3 col=float3(samp(cuv+dir*ch).r, samp(cuv).g, samp(cuv-dir*ch).b);
-    float vig=smoothstep(0.2,1.1,length(uv-c)*1.6);
-    col*=1+pulse*0.18;
-    col*=1-vig*pulse*0.35;
-    return float4(col,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float p = saturate(uMix / 100.0);
+    float2 c = float2(uAngle, saturate(uCount));
+    float hit = clamp(uStrength, 0.2, 1.0);
+    float pulse = 1.0 - pow(abs(p * 2.0 - 1.0), lerp(1.4, 4.5, hit));
+    float z = 1.0 + pulse * uSize * 1.6;
+    float2 cuv_g = (gUv - c) / z + c;
+    float2 delta = cuv_g - gUv;
+    float2 cuv = uv0.xy + delta;
+    float ch = pulse * uSpread * 0.018;
+    float2 dir = normalize((gUv - c) * float2(aspect, 1.0) + 1e-4) / float2(aspect, 1.0);
+    float3 col = float3(samp(cuv + dir * ch).r, samp(cuv).g, samp(cuv - dir * ch).b);
+    float vig = smoothstep(0.2, 1.1, length((gUv - c) * float2(aspect, 1.0)) * 1.6);
+    col *= 1.0 + pulse * 0.18;
+    col *= 1.0 - vig * pulse * 0.35;
+    return float4(col, 1.0);
 }

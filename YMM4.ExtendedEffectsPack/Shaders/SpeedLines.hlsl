@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,12 +55,16 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float2 c=float2(uAngle,uSpread);
-    float2 p=uv-c; float ang=atan2(p.y,p.x); float rad=length(p);
-    float dens=max(uCount,8);
-    float slice=abs(frac(ang/(2*PI)*dens)-0.5);
-    float lineMask=(1-smoothstep(0,0.04,slice))*step(0.22, hash11(floor(ang*dens)));
-    float mask=smoothstep(uSize*0.15,uSize,rad);
-    float4 src=samp(uv);
-    return float4(lerp(src.rgb, float3(uColorR,uColorG,uColorB), lineMask*mask*uStrength),1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float2 c = float2(uAngle, uSpread);
+    float2 p = (gUv - c) * float2(aspect, 1.0);
+    float ang = atan2(p.y, p.x);
+    float rad = length(p);
+    float dens = max(uCount, 8.0);
+    float slice = abs(frac(ang / (2.0 * PI) * dens) - 0.5);
+    float lineMask = (1.0 - smoothstep(0.0, 0.04, slice)) * step(0.22, hash11(floor(ang * dens)));
+    float mask = smoothstep(uSize * 0.15, uSize, rad);
+    float4 src = samp(uv0.xy);
+    return float4(lerp(src.rgb, float3(uColorR, uColorG, uColorB), lineMask * mask * uStrength), 1.0);
 }

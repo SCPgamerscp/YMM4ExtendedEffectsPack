@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,12 +55,16 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy;
-    float env=exp(-frac(uTime*0.35)*4/max(uSpread,0.1));
-    float2 shake=float2(sin(uTime*uSpeed*7.1), cos(uTime*uSpeed*8.7))*uStrength*0.0006*env;
-    float z=1+(uSize/100)*(0.35+0.65*env);
-    float2 cuv=(uv-0.5)/z+0.5+shake;
-    float4 col=0; float2 dir=cuv-0.5;
-    [unroll] for (int i=0;i<8;i++) col+=samp(cuv+dir*((i/7.0-0.5)*uMix*0.22));
-    return col/8;
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float p = saturate(uMix/100.0);
+    float env = sin(p*PI);
+    float2 n = float2(noise(float2(uTime*uSpeed, 0)), noise(float2(0, uTime*uSpeed))) - 0.5;
+    float z = 1.0 + uSize * 0.4 * env;
+    float2 zuv_g = (gUv - 0.5 - n * uStrength * 0.08 * env) / z + 0.5;
+    float2 delta = zuv_g - gUv;
+    float2 uv = uv0.xy + delta;
+    float fringe = uSpread * env * 0.015;
+    float3 col = float3(samp(uv + float2(fringe, 0)).r, samp(uv).g, samp(uv - float2(fringe, 0)).b);
+    return float4(col, 1.0);
 }

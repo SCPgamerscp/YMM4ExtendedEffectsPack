@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,12 +55,17 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float2 p=(uv-0.5)*2; float r=length(p);
-    float2 pd=p*(1+uStrength*r*r)/max(uSize,0.5);
-    float2 suv=pd*0.5+0.5;
-    float fringe=uSpread*r;
-    float3 col=float3(samp(suv+float2(fringe,0)).r, samp(suv).g, samp(suv-float2(fringe,0)).b);
-    if (suv.x<0||suv.x>1||suv.y<0||suv.y>1) col=0.02;
-    col*=lerp(1, smoothstep(1.2,0.4,r), uMix);
-    return float4(col,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float2 p = (gUv - 0.5) * float2(aspect, 1.0) * 2.0;
+    float r = length(p);
+    float2 pd = p * (1.0 + uStrength * r * r) / max(uSize, 0.5);
+    float2 suv_g = pd / float2(aspect, 1.0) * 0.5 + 0.5;
+    float2 delta = suv_g - gUv;
+    float2 suv = uv0.xy + delta;
+    float fringe = uSpread * r * 0.01;
+    float3 col = float3(samp(suv + float2(fringe, 0)).r, samp(suv).g, samp(suv - float2(fringe, 0)).b);
+    if (suv_g.x < 0 || suv_g.x > 1 || suv_g.y < 0 || suv_g.y > 1) col = 0.02;
+    col *= lerp(1.0, smoothstep(1.2, 0.4, r), uMix);
+    return float4(col, 1.0);
 }

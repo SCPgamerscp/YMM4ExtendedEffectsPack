@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,19 +55,25 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float p=saturate(uMix/100.0);
-    float2 c=float2(uAngle,uSpread);
-    float2 d=uv-c; float r=length(d);
-    float2 dir=d/max(r,1e-4);
-    float radius=p*1.25; float w=max(uSize,0.02);
-    float rings=max(uCount,1); float wave=0;
-    [unroll] for (int i=0;i<4;i++) {
-        if (i>=rings) break;
-        float rr=radius-i*w*1.8;
-        wave += exp(-pow((r-rr)/w,2)*2.2);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float p = saturate(uMix / 100.0);
+    float2 c = float2(uAngle, uSpread);
+    float2 d = (gUv - c) * float2(aspect, 1.0);
+    float r = length(d);
+    float2 dir = (d / max(r, 1e-4)) / float2(aspect, 1.0);
+    float radius = p * 1.25 * max(aspect, 1.0);
+    float w = max(uSize, 0.02);
+    float rings = max(uCount, 1.0);
+    float wave = 0.0;
+    [unroll] for (int i = 0; i < 4; i++) {
+        if (i >= rings) break;
+        float rr = radius - i * w * 1.8;
+        wave += exp(-pow((r - rr) / w, 2.0) * 2.2);
     }
-    float3 col=samp(uv+dir*wave*uStrength*0.55).rgb;
-    col += wave*0.18;
-    col *= 1+wave*0.12;
-    return float4(col,1);
+    float2 delta = dir * wave * uStrength * 0.55;
+    float3 col = samp(uv0.xy + delta).rgb;
+    col += wave * 0.18;
+    col *= 1.0 + wave * 0.12;
+    return float4(col, 1.0);
 }

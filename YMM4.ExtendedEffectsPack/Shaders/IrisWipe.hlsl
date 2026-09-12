@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,21 +55,23 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float p=saturate(uMix/100.0);
-    p=p*p*(3-2*p);
-    float2 c=float2(uAngle,uSpread);
-    float2 d=(uv-c)*float2(1.0,1.0);
-    float r=length(d);
-    float radius=p*1.15;
-    if (uMode>0.5) {
-        float n=max(uCount,3);
-        float a=atan2(d.y,d.x);
-        float stepA=6.2831853/n;
-        float aa=fmod(a+3.14159, stepA)-stepA*0.5;
-        r=length(d)*cos(aa)/cos(stepA*0.5);
+    float2 uv = GetGlobalUV(posScene, uBounds);
+    float p = saturate(uMix / 100.0);
+    p = p * p * (3.0 - 2.0 * p);
+    float2 c = float2(uAngle, uSpread);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float2 d = (uv - c) * float2(aspect, 1.0);
+    float r = length(d);
+    float radius = p * 1.15 * max(aspect, 1.0);
+    if (uMode > 0.5) {
+        float n = max(uCount, 3.0);
+        float a = atan2(d.y, d.x);
+        float stepA = 6.2831853 / n;
+        float aa = fmod(a + 3.14159265, stepA) - stepA * 0.5;
+        r = length(d) * cos(aa) / cos(stepA * 0.5);
     }
-    float mask=smoothstep(radius-uSize, radius+uSize*0.2, r);
-    float3 src=samp(uv).rgb;
-    float3 hole=float3(uColorR,uColorG,uColorB)*(0.15+0.1*noise(uv*8));
-    return float4(lerp(src, hole, mask),1);
+    float mask = smoothstep(radius - uSize, radius + uSize * 0.2, r);
+    float3 src = samp(uv0.xy).rgb;
+    float3 hole = float3(uColorR, uColorG, uColorB) * (0.15 + 0.1 * noise(uv * 8.0));
+    return float4(lerp(src, hole, mask), 1.0);
 }

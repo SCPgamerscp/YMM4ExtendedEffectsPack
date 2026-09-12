@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -40,18 +45,21 @@ float4 samp(float2 uv) {
 float2 mirrored(float2 uv) { return 1-abs(frac(uv*.5)*2-1); }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv = uv0.xy;
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
     float p = saturate(uMix / 100.0);
-    float env = sin(PI * p);
+    float env = sin(p * 3.14159265);
     float ang = uAngle * 0.01745329251;
     float2 dir = float2(cos(ang), sin(ang));
-    float2 q = (uv - 0.5) / (1 + uSize / 100.0 * env) + 0.5;
+    float2 q_g = (gUv - 0.5) / (1.0 + uSize / 100.0 * env) + 0.5;
     float2 split = dir * uSpread * 0.0015 * env;
-    float3 acc = 0;
+    float3 acc = 0.0;
     [unroll] for (int i = 0; i < 12; i++) {
         float2 offset = dir * ((i / 11.0) - 0.5) * uStrength * env * 0.35;
-        float2 u = mirrored(q + dir * env * 0.12 + offset);
+        float2 u_g = q_g + dir * env * 0.12 + offset;
+        float2 delta = u_g - gUv;
+        float2 u = uv0.xy + delta;
         acc += float3(samp(u + split).r, samp(u).g, samp(u - split).b);
     }
-    return float4(acc / 12, 1);
+    return float4(acc / 12.0, 1.0);
 }

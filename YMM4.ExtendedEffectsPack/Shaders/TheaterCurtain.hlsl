@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,23 +55,23 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv = uv0.xy;
-    float progress = saturate(uMix/100.0);
-    progress = progress*progress*(3-2*progress);
-    float folds = max(uCount,4);
-    float4 scene = samp(uv);
-    bool left = uv.x < 0.5;
-    float normX = (uMode<0.5) ? (left ? uv.x/0.5 : (1-uv.x)/0.5) : (uMode<1.5 ? 1-uv.x : uv.x);
-    float edge = 1-progress;
-    if (normX > edge+0.002) return scene;
-    float compressed = normX / max(edge,0.02);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float progress = saturate(uMix / 100.0);
+    progress = progress * progress * (3.0 - 2.0 * progress);
+    float folds = max(uCount, 4.0);
+    float4 scene = samp(uv0.xy);
+    bool left = gUv.x < 0.5;
+    float normX = (uMode < 0.5) ? (left ? gUv.x / 0.5 : (1.0 - gUv.x) / 0.5) : (uMode < 1.5 ? 1.0 - gUv.x : gUv.x);
+    float edge = 1.0 - progress;
+    if (normX > edge + 0.002) return scene;
+    float compressed = normX / max(edge, 0.02);
     float wave = sin(compressed * folds * PI);
-    float spec = pow(max(wave,0),5) * (uFlagA>0.5?0.55:0);
-    float3 baseCol = float3(uColorR,uColorG,uColorB) * (0.42+0.58*(0.55+0.45*wave));
+    float spec = pow(max(wave, 0.0), 5.0) * (uFlagA > 0.5 ? 0.55 : 0.0);
+    float3 baseCol = float3(uColorR, uColorG, uColorB) * (0.42 + 0.58 * (0.55 + 0.45 * wave));
     baseCol += spec;
-    if (uFlagB>0.5 && uv.y>0.93) {
-        float tass = abs(sin(uv.x*160));
-        baseCol = lerp(baseCol, float3(0.82,0.68,0.28)*(0.7+0.3*tass), (1-(uv.y-0.93)/0.07)*smoothstep(0.15,0.55,tass));
+    if (uFlagB > 0.5 && gUv.y > 0.93) {
+        float tass = abs(sin(gUv.x * 160.0));
+        baseCol = lerp(baseCol, float3(0.82, 0.68, 0.28) * (0.7 + 0.3 * tass), (1.0 - (gUv.y - 0.93) / 0.07) * smoothstep(0.15, 0.55, tass));
     }
-    return float4(baseCol,1);
+    return float4(baseCol, 1.0);
 }

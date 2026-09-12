@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,14 +55,19 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy;
-    float2 shake=(hash21(float2(floor(uTime*24),0.2))-0.5)*uSpread*0.004*float2(1,1);
-    float3 col=samp(uv+shake).rgb;
-    float3 sep=float3(dot(col,float3(0.393,0.769,0.189)), dot(col,float3(0.349,0.686,0.168)), dot(col,float3(0.272,0.534,0.131)));
-    col=lerp(col,sep,uSize);
-    float speckle=step(0.997-uStrength*0.01, hash21(uv*800+floor(uTime*24)));
-    col+=speckle*0.55;
-    col*=1+(hash11(floor(uTime*16))-0.5)*uMix*0.35;
-    col*=lerp(1, smoothstep(1.1,0.35,length(uv-0.5)*1.4), uCount);
-    return float4(col,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float4 src = samp(uv0.xy);
+    float g = lum(src.rgb);
+    float3 sepia = float3(g * 1.2, g * 1.0, g * 0.8) * float3(uColorR, uColorG, uColorB);
+    float3 col = lerp(src.rgb, sepia, uStrength);
+    float n = (hash21(gUv * 400.0 + frac(uTime * 17.0)) - 0.5) * uSize * 0.35;
+    col += n;
+    float lineX = hash11(floor(uTime * 14.0) * 0.37);
+    float lineScratch = exp(-pow(abs(gUv.x - lineX) / 0.0015, 2.0)) * uSpread * step(0.4, hash11(uTime * 8.0));
+    col += lineScratch * 0.7;
+    float r = length((gUv - 0.5) * float2(aspect, 1.0));
+    float vig = smoothstep(0.3, 0.9, r);
+    col *= 1.0 - vig * uMix * 0.75;
+    return float4(col, 1.0);
 }

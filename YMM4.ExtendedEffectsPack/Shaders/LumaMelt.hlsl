@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,16 +55,18 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float p=saturate(uMix/100.0);
-    float n=fbm(float2(uv.x*6, uv.y*2.4+uTime*0.4));
-    float L=lum(samp(uv).rgb);
-    float drip=(L*0.65+n*uSpread)*uStrength*p*1.35;
-    float2 uv2=uv;
-    if (uMode<0.5) uv2.y -= drip;
-    else uv2 += normalize(uv-0.5)*drip*0.85;
-    float3 col=samp(uv2).rgb;
-    float gone=smoothstep(0.55,1.05, drip+(1-uv.y)*p);
-    col=lerp(col, float3(uColorR,uColorG,uColorB), gone*0.85);
-    col*=1-gone*0.25;
-    return float4(col,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float p = saturate(uMix / 100.0);
+    float4 col = samp(uv0.xy);
+    float l = lum(col.rgb);
+    float n = fbm(gUv * 6.0);
+    float threshold = p * 1.25;
+    float melt = smoothstep(threshold - uSpread * 0.2, threshold + 0.05, l * 0.7 + n * 0.3);
+    float drip = max(0.0, sin(gUv.x * 30.0 + n * 4.0)) * pow(p, 1.5) * uSize * 0.8;
+    float2 duv_g = gUv + float2(0.0, drip * (1.0 - melt));
+    float2 delta = duv_g - gUv;
+    float4 meltedCol = samp(uv0.xy + delta);
+    float edge = smoothstep(0.0, 0.06, abs(melt - 0.5));
+    float3 glow = float3(uColorR, uColorG, uColorB) * (1.0 - edge) * uStrength * 2.0;
+    return float4(lerp(meltedCol.rgb, float3(0, 0, 0), (1.0 - melt) * uStrength) + glow, col.a * melt);
 }

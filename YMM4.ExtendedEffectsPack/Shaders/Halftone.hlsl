@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,43 +55,15 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float3 src=samp(uv).rgb;
-    float ang=uAngle*0.01745329251;
-    float2x2 rot=float2x2(cos(ang),-sin(ang),sin(ang),cos(ang));
-    float2x2 inv=float2x2(cos(ang),sin(ang),-sin(ang),cos(ang));
-    float cell=max(uSize,2);
-    float2 px=uv*float2(1920,1080);
-    float3 col;
-    if (uMode<0.5) {
-        float2 p=mul(rot,px);
-        float2 g=floor(p/cell);
-        float2 gc=(g+0.5)*cell;
-        float2 suv=mul(inv,gc)/float2(1920,1080);
-        float L=lum(samp(suv).rgb);
-        L=saturate((L-0.5)*(1+uStrength*2)+0.5);
-        float dist=length(p-gc)/(cell*0.5);
-        float dotv=1-smoothstep(L*0.92, L*0.92+0.08, dist);
-        float3 ink=float3(uColorR,uColorG,uColorB);
-        float3 paper=uFlagA>0.5 ? float3(0.93,0.90,0.84) : src;
-        col=lerp(paper, ink, dotv);
-    } else {
-        float3 acc=0;
-        float angs[4]={0.2618,1.309,0.7854,0};
-        [unroll] for (int i=0;i<4;i++) {
-            float a=angs[i];
-            float2x2 r=float2x2(cos(a),-sin(a),sin(a),cos(a));
-            float2x2 ri=float2x2(cos(a),sin(a),-sin(a),cos(a));
-            float2 p=mul(r,px); float2 g=floor(p/cell); float2 gc=(g+0.5)*cell;
-            float2 suv=mul(ri,gc)/float2(1920,1080);
-            float3 s=samp(suv).rgb;
-            float ch=i==0?s.g:i==1?s.r:i==2?s.b:lum(s);
-            ch=saturate((ch-0.5)*(1+uStrength)+0.5);
-            float dist=length(p-gc)/(cell*0.5);
-            float dotv=1-smoothstep(ch*0.9, ch*0.9+0.1, dist);
-            float3 ink=i==0?float3(0,0.85,0.85):i==1?float3(0.95,0,0.7):i==2?float3(1,0.92,0):float3(0.08,0.08,0.08);
-            acc+=ink*dotv;
-        }
-        col=1-acc*0.7;
-    }
-    return float4(col,1);
+    float4 src = samp(uv0.xy);
+    float g = lum(src.rgb);
+    float scale = max(uSize, 4.0);
+    float2 grid = posScene.xy / scale;
+    float2 f = frac(grid) - 0.5;
+    float r = length(f);
+    float radius = sqrt(1.0 - g) * 0.5 * uStrength;
+    float dotPattern = 1.0 - smoothstep(radius - 0.05, radius + 0.05, r);
+    float3 ink = float3(uColorR, uColorG, uColorB);
+    float3 col = lerp(src.rgb, ink, dotPattern * uMix);
+    return float4(col, 1.0);
 }

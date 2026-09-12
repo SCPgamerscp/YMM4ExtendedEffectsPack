@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,10 +55,17 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float2 c=float2(uAngle,uSpread); float2 p=uv-c;
-    float slices=max(floor(uCount+0.5),2);
-    float ang=atan2(p.y,p.x)+uTime*uSpeed; float r=length(p)/max(uSize,0.2);
-    float ta=2*PI/slices; ang=abs(fmod(ang,ta)-ta*0.5);
-    float2 q=float2(cos(ang),sin(ang))*r + c;
-    return samp(q);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float2 p = (gUv - 0.5) * float2(aspect, 1.0);
+    float r = length(p);
+    float a = atan2(p.y, p.x) + uTime * uSpeed * 0.2 + uAngle;
+    float seg = 6.2831853 / max(uCount, 2.0);
+    a = abs(fmod(a, seg) - seg * 0.5);
+    float2 kuv_g = float2(cos(a), sin(a)) * r * uSize / float2(aspect, 1.0) + 0.5;
+    float2 delta = kuv_g - gUv;
+    float2 kuv = uv0.xy + delta;
+    float4 col = samp(kuv);
+    col.rgb = lerp(samp(uv0.xy).rgb, col.rgb, uStrength);
+    return col;
 }

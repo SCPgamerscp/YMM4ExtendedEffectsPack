@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,16 +55,19 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float p=saturate(uMix/100.0);
-    float2 c=float2(uAngle, saturate(uCount));
-    float2 d=uv-c; float r=length(d);
-    float radius=uSize*lerp(0.15,1,p);
-    float mask=1-smoothstep(radius, radius+uSpread*0.8, r);
-    float3 src=samp(uv).rgb;
-    float3 light=float3(uColorR,uColorG,uColorB);
-    float3 lit=src*light*uStrength;
-    float3 dark=src*0.05;
-    float3 col=lerp(dark, lit, mask);
-    col += light * pow(mask,3)*0.18*uStrength;
-    return float4(col,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float p = saturate(uMix / 100.0);
+    float2 c = float2(uAngle, saturate(uCount));
+    float2 d = (gUv - c) * float2(aspect, 1.0);
+    float r = length(d);
+    float radius = uSize * lerp(0.15, 1.0, p);
+    float mask = 1.0 - smoothstep(radius, radius + uSpread * 0.8, r);
+    float3 src = samp(uv0.xy).rgb;
+    float3 light = float3(uColorR, uColorG, uColorB);
+    float3 lit = src * light * uStrength;
+    float3 dark = src * 0.05;
+    float3 col = lerp(dark, lit, mask);
+    col += light * pow(mask, 3.0) * 0.18 * uStrength;
+    return float4(col, 1.0);
 }

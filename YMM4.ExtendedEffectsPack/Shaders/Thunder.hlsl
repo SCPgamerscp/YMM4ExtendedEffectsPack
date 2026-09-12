@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,17 +55,19 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float q=floor(uTime*uSpeed); float4 src=samp(uv);
-    if (uMode<0.5) {
-        float bolt=0; float x=0.5;
-        [unroll] for (int i=0;i<6;i++) {
-            x+=(hash11(q*7.1+i+uv.y*uCount)-0.5)*0.12;
-            float d=abs(uv.x-x); float w=uSize*0.001;
-            bolt+=exp(-d/(w*0.35))*0.7 + exp(-d/(w*1.6))*0.25;
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float q = floor(uTime * uSpeed);
+    float4 src = samp(uv0.xy);
+    if (uMode < 0.5) {
+        float bolt = 0.0; float x = 0.5;
+        [unroll] for (int i = 0; i < 6; i++) {
+            x += (hash11(q * 7.1 + i + gUv.y * uCount) - 0.5) * 0.12;
+            float d = abs(gUv.x - x); float w = uSize * 0.001;
+            bolt += exp(-d / (w * 0.35)) * 0.7 + exp(-d / (w * 1.6)) * 0.25;
         }
-        float flashOn=step(0.62, hash11(q*3.7));
-        return float4(src.rgb + bolt*float3(uColorR,uColorG,uColorB)*flashOn*1.4 + flashOn*uMix,1);
+        float flashOn = step(0.62, hash11(q * 3.7));
+        return float4(src.rgb + bolt * float3(uColorR, uColorG, uColorB) * flashOn * 1.4 + flashOn * uMix, 1.0);
     }
-    float n=fbm(uv*8+q);
-    return float4(src.rgb + float3(uColorR,uColorG,uColorB)*step(0.58,n)*0.8,1);
+    float n = fbm(gUv * 8.0 + q);
+    return float4(src.rgb + float3(uColorR, uColorG, uColorB) * step(0.58, n) * 0.8, 1.0);
 }

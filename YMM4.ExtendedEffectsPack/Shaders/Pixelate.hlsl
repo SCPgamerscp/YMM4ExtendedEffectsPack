@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,22 +55,17 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy;
-    float2 block=max(uSize,2)/float2(1920,1080);
-    float2 idx=floor(uv/block);
-    float2 center=(idx+0.5)*block;
-    float4 col=samp(center);
-    if (uCount>0.5 && uCount<1.5) col.rgb=floor(col.rgb*4+0.5)/4;
-    else if (uCount>1.5 && uCount<2.5) col.rgb=floor(col.rgb*8+0.5)/8;
-    else if (uCount>2.5) {
-        float g=floor(lum(col.rgb)*3+0.5)/3;
-        col.rgb=lerp(float3(0.06,0.15,0.08), float3(0.61,0.73,0.16), g);
-    }
-    float2 local=(uv-center)/block;
-    if (uMode>0.5 && uMode<1.5 && length(local)>0.46) col.rgb=0.05;
-    if (uFlagA>0.5) {
-        float2 bd=abs(frac(uv/block)-0.5);
-        if (max(bd.x,bd.y)>0.46) col.rgb=lerp(col.rgb,0.02,uMix);
-    }
-    return float4(col.rgb,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float p = saturate(uMix / 100.0);
+    float blocks = max(uCount, 2.0) * (1.0 - p * 0.85);
+    float2 size = float2(blocks * aspect, blocks);
+    float2 puv_g = (floor(gUv * size) + 0.5) / size;
+    float2 delta = puv_g - gUv;
+    float4 col = samp(uv0.xy + delta);
+    float2 grid = abs(frac(gUv * size) - 0.5);
+    float lineW = min(grid.x, grid.y);
+    float gridLine = smoothstep(0.0, 0.05, lineW);
+    col.rgb *= lerp(1.0, gridLine, uSpread * 0.5);
+    return float4(lerp(samp(uv0.xy).rgb, col.rgb, uStrength), 1.0);
 }

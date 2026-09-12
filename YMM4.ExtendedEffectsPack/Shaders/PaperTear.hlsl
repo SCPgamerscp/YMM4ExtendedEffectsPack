@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,12 +55,15 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float p=uMix/100; float n=fbm(uv*float2(18,4)+3);
-    float seam=(uMode<0.5?uv.x:uv.y)-0.5+(n-0.5)*uSpread*0.35;
-    float open=(p-0.5)*1.2; float dist=abs(seam)-open;
-    float4 src=samp(uv);
-    if (dist<0) return src;
-    float3 paper=float3(uColorR,uColorG,uColorB)*(0.92+0.08*noise(uv*40));
-    paper*=1-exp(-dist*18)*uStrength*0.65;
-    return float4(paper,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float progress = saturate(uMix / 100.0);
+    float n = fbm(float2(gUv.y * 8.0, 0.0)) * uSpread * 0.15;
+    float tearX = progress + n;
+    float4 src = samp(uv0.xy);
+    if (gUv.x < tearX) {
+        float edge = smoothstep(tearX - 0.02, tearX, gUv.x);
+        float3 tearColor = float3(uColorR, uColorG, uColorB);
+        return float4(lerp(src.rgb, tearColor, 1.0 - edge), 1.0);
+    }
+    return src;
 }

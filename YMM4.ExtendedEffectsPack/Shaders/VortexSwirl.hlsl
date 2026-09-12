@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,20 +55,25 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float p=saturate(uMix/100.0);
-    float peak=sin(p*3.14159265);
-    float2 c=float2(uAngle,uSpread);
-    float2 d=uv-c; float r=length(d);
-    float a=atan2(d.y,d.x);
-    float fall=lerp(1, smoothstep(0,0.85,r), uSize);
-    a += peak*uStrength*fall*(1.2-r);
-    float2 uv2=c+float2(cos(a),sin(a))*r;
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float aspect = uBounds.z / max(uBounds.w, 1.0);
+    float p = saturate(uMix / 100.0);
+    float peak = sin(p * 3.14159265);
+    float2 c = float2(uAngle, uSpread);
+    float2 d = (gUv - c) * float2(aspect, 1.0);
+    float r = length(d);
+    float a = atan2(d.y, d.x);
+    float fall = lerp(1.0, smoothstep(0.0, 0.85, r), uSize);
+    a += peak * uStrength * fall * (1.2 - r);
+    float2 suv_g = c + (float2(cos(a), sin(a)) * r) / float2(aspect, 1.0);
+    float2 delta = suv_g - gUv;
+    float2 uv2 = uv0.xy + delta;
     float3 col;
-    if (uFlagA>0.5) {
-        float ch=peak*0.012;
-        col=float3(samp(uv2+float2(ch,0)).r, samp(uv2).g, samp(uv2-float2(ch,0)).b);
-    } else col=samp(uv2).rgb;
-    float hole=smoothstep(0.35,0.72,peak)*(1-smoothstep(0,0.22,r));
-    col*=1-hole*0.55;
-    return float4(col,1);
+    if (uFlagA > 0.5) {
+        float ch = peak * 0.012;
+        col = float3(samp(uv2 + float2(ch, 0)).r, samp(uv2).g, samp(uv2 - float2(ch, 0)).b);
+    } else col = samp(uv2).rgb;
+    float hole = smoothstep(0.35, 0.72, peak) * (1.0 - smoothstep(0.0, 0.22, r));
+    col = lerp(col, float3(0, 0, 0), hole);
+    return float4(col, 1.0);
 }

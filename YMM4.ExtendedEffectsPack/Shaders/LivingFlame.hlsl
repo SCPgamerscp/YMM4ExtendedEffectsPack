@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,7 +55,8 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float h=1-uv.y;
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float2 uv = uv0.xy; float h=1-uv.y;
     float2 nUV=uv*float2(3,5.5)-float2(0,uTime*uSpeed);
     float n1=fbm(nUV); float n2=fbm(nUV*2.1+1.7);
     float2 distort=float2(n1-0.5, -abs(n2))*(uStrength*0.0045*(0.25+h*1.4));

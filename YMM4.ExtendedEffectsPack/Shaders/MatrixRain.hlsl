@@ -19,7 +19,12 @@ cbuffer Constants : register(b0)
     float uColorG   : packoffset(c3.y);
     float uColorB   : packoffset(c3.z);
     float uPad      : packoffset(c3.w);
+    float4 uBounds  : packoffset(c4);
 };
+
+float2 GetGlobalUV(float4 posScene, float4 bounds) {
+    return (posScene.xy - bounds.xy) / max(bounds.zw, float2(1.0, 1.0));
+}
 
 #define PI 3.14159265
 
@@ -50,19 +55,15 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 uv=uv0.xy; float cs=max(uSize,8);
-    float2 res=float2(1920,1080)/cs; float2 grid=floor(uv*res);
-    float colRand=hash11(grid.x+0.13);
-    float drop=frac(uTime*uSpeed*0.12+colRand*1.7);
-    float head=drop*res.y; float distHead=head-grid.y; if(distHead<0) distHead+=res.y;
-    float trail=max(uCount,4); float bright=0;
-    if (distHead<1) bright=1.7; else if (distHead<trail) bright=1-distHead/trail;
-    float2 cell=frac(uv*res);
-    float glyph=0;
-    if (abs(cell.x-0.5)<0.32 && abs(cell.y-0.5)<0.4)
-        glyph=step(0.55, hash21(grid+floor(uTime*uSpeed*0.5)));
-    float3 code=float3(uColorR,uColorG,uColorB)*bright*glyph;
-    float4 src=samp(uv);
-    if (uMode>0.5) return float4(code*(0.25+lum(src.rgb)*1.4),1);
-    return float4(src.rgb*0.22+code,1);
+    float2 gUv = GetGlobalUV(posScene, uBounds);
+    float cols = max(uCount, 10.0);
+    float colId = floor(gUv.x * cols);
+    float speed = hash11(colId) * 0.8 + 0.4;
+    float dropY = frac(gUv.y + uTime * speed * uSpeed * 0.2);
+    float charId = floor(dropY * 20.0);
+    float glyph = step(0.3, hash21(float2(colId, charId)));
+    float tail = 1.0 - dropY;
+    float3 rainCol = float3(uColorR, uColorG, uColorB) * tail * glyph;
+    float4 src = samp(uv0.xy);
+    return float4(lerp(src.rgb, rainCol, uStrength), 1.0);
 }
