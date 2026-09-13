@@ -63,11 +63,16 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
     float2 c = CenterFromPixels(uAngle, uSpread, uBounds);
-    float2 p = (gUv - c) * float2(aspect, 1.0);
-    float ang = atan2(p.y, p.x);
-    float rad = length(p);
+    
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float2 pixelOffset = (gUv - c) * res;
+    float ang = atan2(pixelOffset.y, pixelOffset.x);
+    float distPx = length(pixelOffset);
+    
+    float maxRadiusPx = length(res) * 0.55;
+    float rad = distPx / max(maxRadiusPx, 1.0);
+    
     float dens = max(uCount, 8.0);
     float slice = abs(frac(ang / (2.0 * PI) * dens) - 0.5);
     float lineMask = (1.0 - smoothstep(0.0, 0.04, slice)) * step(0.22, hash11(floor(ang * dens)));

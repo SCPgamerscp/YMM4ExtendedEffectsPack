@@ -56,8 +56,6 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    
     float cycle = frac(uTime * max(uSpeed, 0.01));
     float pulse = 0.0;
     
@@ -93,8 +91,12 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     float4 col = float4(rCol, gCol, bCol, aCol);
     
     // 周辺フラッシュ (uMix, FlashColor)
-    float dist = length((gUv - 0.5) * float2(aspect, 1.0));
-    float flashMask = smoothstep(0.25, 0.9, dist) * pulse * saturate(uMix);
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float2 pixelOffset = (gUv - 0.5) * res;
+    float distPx = length(pixelOffset);
+    float maxRadiusPx = length(res) * 0.5;
+    float distNorm = distPx / max(maxRadiusPx, 1.0);
+    float flashMask = smoothstep(0.25, 0.9, distNorm) * pulse * saturate(uMix);
     float3 flashCol = float3(uColorR, uColorG, uColorB);
     col.rgb = col.rgb + flashCol * flashMask * 1.5;
     

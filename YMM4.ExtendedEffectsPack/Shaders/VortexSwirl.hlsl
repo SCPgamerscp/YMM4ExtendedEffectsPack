@@ -63,18 +63,24 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
     float p = saturate(uMix / 100.0);
     float peak = sin(p * 3.14159265);
     float2 c = CenterFromPixels(uAngle, uSpread, uBounds);
-    float2 d = (gUv - c) * float2(aspect, 1.0);
-    float r = length(d);
-    float a = atan2(d.y, d.x);
+    
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float2 pixelOffset = (gUv - c) * res;
+    float distPx = length(pixelOffset);
+    float maxRadiusPx = length(res) * 0.55;
+    float r = distPx / max(maxRadiusPx, 1.0);
+    
+    float a = atan2(pixelOffset.y, pixelOffset.x);
     float fall = lerp(1.0, smoothstep(0.0, 0.85, r), uSize);
     a += peak * uStrength * fall * (1.2 - r);
-    float2 suv_g = c + (float2(cos(a), sin(a)) * r) / float2(aspect, 1.0);
-    float2 delta = suv_g - gUv;
-    float2 uv2 = uv0.xy + delta;
+    
+    float2 rotatedOffsetPx = float2(cos(a), sin(a)) * distPx;
+    float2 deltaPx = rotatedOffsetPx - pixelOffset;
+    float2 uv2 = uv0.xy + deltaPx / res;
+    
     float3 col;
     if (uFlagA > 0.5) {
         float ch = peak * 0.012;

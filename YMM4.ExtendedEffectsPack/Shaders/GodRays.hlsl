@@ -64,13 +64,12 @@ float3 hsv2rgb(float3 c) {
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
     float2 light = CenterFromPixels(uAngle, uSpread, uBounds);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    float2 delta = (gUv - light) * float2(aspect, 1.0);
-    float dist = length(delta);
-    float2 dir = delta / max(dist, 1e-4);
-    float angle = atan2(delta.y, delta.x);
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float2 pixelOffset = (gUv - light) * res;
+    float distPx = length(pixelOffset);
+    float angle = atan2(pixelOffset.y, pixelOffset.x);
     float ray = pow(0.5 + 0.5 * sin(angle * max(uCount, 4.0) + fbm(float2(angle * 2.0, uTime * 0.15)) * 3.0), 2.4);
-    float3 acc = 0; float decay = 1.0; float2 p = uv0.xy; float2 stepv = (delta / float2(aspect, 1.0)) * 0.018 * uSize;
+    float3 acc = 0; float decay = 1.0; float2 p = uv0.xy; float2 stepv = (gUv - light) * 0.018 * uSize;
     [loop] for (int i = 0; i < 24; i++) {
         p -= stepv; float4 s = samp(p); float L = lum(s.rgb);
         acc += s.rgb * L * decay * ray; decay *= 0.86;

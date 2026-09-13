@@ -63,19 +63,27 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    float p = saturate(uMix / 100.0);
     float2 c = CenterFromPixels(uAngle, uCount, uBounds);
+    
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float2 pixelOffset = (gUv - c) * res;
+    float distPx = length(pixelOffset);
+    float maxRadiusPx = length(res) * 0.55;
+    float2 dir = pixelOffset / max(distPx, 1e-4);
+    
+    float p = saturate(uMix / 100.0);
     float hit = clamp(uStrength, 0.2, 1.0);
     float pulse = 1.0 - pow(abs(p * 2.0 - 1.0), lerp(1.4, 4.5, hit));
     float z = 1.0 + pulse * uSize * 1.6;
-    float2 cuv_g = (gUv - c) / z + c;
-    float2 delta = cuv_g - gUv;
-    float2 cuv = uv0.xy + delta;
-    float ch = pulse * uSpread * 0.018;
-    float2 dir = normalize((gUv - c) * float2(aspect, 1.0) + 1e-4) / float2(aspect, 1.0);
-    float3 col = float3(samp(cuv + dir * ch).r, samp(cuv).g, samp(cuv - dir * ch).b);
-    float vig = smoothstep(0.2, 1.1, length((gUv - c) * float2(aspect, 1.0)) * 1.6);
+    
+    // 物理ピクセル空間でズーム
+    float2 zoomedOffsetPx = pixelOffset / z;
+    float2 cuv = c + zoomedOffsetPx / res;
+    
+    float chPx = pulse * uSpread * 0.018 * maxRadiusPx;
+    float2 chUv = (dir * chPx) / res;
+    float3 col = float3(samp(cuv + chUv).r, samp(cuv).g, samp(cuv - chUv).b);
+    float vig = smoothstep(0.2, 1.1, (distPx / maxRadiusPx) * 1.6);
     col *= 1.0 + pulse * 0.18;
     col *= 1.0 - vig * pulse * 0.35;
     return float4(col, 1.0);

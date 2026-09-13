@@ -63,13 +63,18 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    float p = saturate(uMix / 100.0);
     float2 c = CenterFromPixels(uAngle, uCount, uBounds);
-    float2 d = (gUv - c) * float2(aspect, 1.0);
-    float r = length(d);
-    float radius = uSize * lerp(0.15, 1.0, p);
-    float mask = 1.0 - smoothstep(radius, radius + uSpread * 0.8, r);
+    
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float2 pixelOffset = (gUv - c) * res;
+    float distPx = length(pixelOffset);
+    
+    float p = saturate(uMix / 100.0);
+    float maxRadiusPx = length(res) * 0.55;
+    float radiusPx = uSize * maxRadiusPx * lerp(0.15, 1.0, p);
+    float softnessPx = max(uSpread * maxRadiusPx * 0.8, 1.0);
+    float mask = 1.0 - smoothstep(radiusPx, radiusPx + softnessPx, distPx);
+    
     float3 src = samp(uv0.xy).rgb;
     float3 light = float3(uColorR, uColorG, uColorB);
     float3 lit = src * light * uStrength;

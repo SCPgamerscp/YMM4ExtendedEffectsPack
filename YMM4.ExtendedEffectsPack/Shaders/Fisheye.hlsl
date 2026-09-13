@@ -56,16 +56,18 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    float2 p = (gUv - 0.5) * float2(aspect, 1.0) * 2.0;
-    float r = length(p);
-    float2 pd = p * (1.0 + uStrength * r * r) / max(uSize, 0.5);
-    float2 suv_g = pd / float2(aspect, 1.0) * 0.5 + 0.5;
-    float2 delta = suv_g - gUv;
-    float2 suv = uv0.xy + delta;
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float maxDim = max(res.x, res.y);
+    float2 pixelOffset = (gUv - 0.5) * res;
+    float distPx = length(pixelOffset);
+    float r = distPx / (maxDim * 0.5);
+    
+    float2 pdPx = pixelOffset * (1.0 + uStrength * r * r) / max(uSize, 0.5);
+    float2 deltaPx = pdPx - pixelOffset;
+    float2 suv = uv0.xy + deltaPx / res;
     float fringe = uSpread * r * 0.01;
     float3 col = float3(samp(suv + float2(fringe, 0)).r, samp(suv).g, samp(suv - float2(fringe, 0)).b);
-    if (suv_g.x < 0 || suv_g.x > 1 || suv_g.y < 0 || suv_g.y > 1) col = 0.02;
+    if (suv.x < 0 || suv.x > 1 || suv.y < 0 || suv.y > 1) col = 0.02;
     col *= lerp(1.0, smoothstep(1.2, 0.4, r), uMix);
     return float4(col, 1.0);
 }

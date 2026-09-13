@@ -63,16 +63,22 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
     float2 c = CenterFromPixels(uAngle, uSpread, uBounds);
-    float2 d = (gUv - c) * float2(aspect, 1.0);
-    float r = length(d);
-    float wave = sin(r * uCount - uTime * uSpeed);
-    float env = exp(-r * 3.2);
-    float2 dir = (d / max(r, 1e-4)) / float2(aspect, 1.0);
-    float2 delta = dir * wave * uStrength * env;
+    
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float2 pixelOffset = (gUv - c) * res;
+    float distPx = length(pixelOffset);
+    float2 dir = pixelOffset / max(distPx, 1e-4);
+    
+    // 対角線半径を基準にした正規化距離 (0..1)
+    float maxRadiusPx = length(res) * 0.55;
+    float rNorm = distPx / max(maxRadiusPx, 1.0);
+    
+    float wave = sin(rNorm * uCount * 2.0 - uTime * uSpeed);
+    float env = exp(-rNorm * 3.2);
+    float2 delta = (dir * wave * uStrength * env * 30.0) / res;
     float3 col = samp(uv0.xy + delta).rgb;
-    float spec = pow(max(wave, 0.0), 6.0) * env * uMix;
+    float spec = pow(max(wave, 0.0), 6.0) * env * (uMix / 100.0);
     col += spec * 0.45;
     return float4(col, 1.0);
 }

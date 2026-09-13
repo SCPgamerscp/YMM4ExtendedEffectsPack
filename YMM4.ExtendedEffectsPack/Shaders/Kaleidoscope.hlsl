@@ -63,11 +63,12 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    
-    // 中心座標 (OffsetX, OffsetY)
     float2 center = CenterFromPixels(uAngle, uSpread, uBounds);
-    float2 p = (gUv - center) * float2(aspect, 1.0);
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float maxDim = max(res.x, res.y);
+    
+    // 物理ピクセル長で正規化した等方座標 p (どんな比率でも完全な正円・正多角形対称空間)
+    float2 p = (gUv - center) * (res / maxDim);
     
     // 回転速度 (Spin)
     float rot = uTime * uSpeed * 1.5;
@@ -90,13 +91,12 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
         p = p - 2.0 * min(0.0, d) * n;
     }
     
-    // 中心基準のシームレス・ピンポンタイリング (隙間なく画面全体へ敷き詰める)
-    float2 shifted = frac((p / float2(aspect, 1.0) + center) * 0.5) * 2.0;
+    // 等方空間から元画像の UV 空間へ正しくマッピング
+    float2 uvMapped = p * (maxDim / res) + center;
+    float2 shifted = frac(uvMapped * 0.5) * 2.0;
     float2 kuv_g = abs(shifted - 1.0);
     
-    float2 sampUv = (uBounds.z > 1.0 && uBounds.w > 1.0) ? kuv_g : (uv0.xy + (kuv_g - gUv));
-    float4 col = samp(sampUv);
-    
+    float4 col = samp(kuv_g);
     float4 src = samp(uv0.xy);
     return lerp(src, col, saturate(uStrength));
 }

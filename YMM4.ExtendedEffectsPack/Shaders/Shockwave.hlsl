@@ -63,22 +63,25 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    float p = saturate(uMix / 100.0);
     float2 c = CenterFromPixels(uAngle, uSpread, uBounds);
-    float2 d = (gUv - c) * float2(aspect, 1.0);
-    float r = length(d);
-    float2 dir = (d / max(r, 1e-4)) / float2(aspect, 1.0);
-    float radius = p * 1.25 * max(aspect, 1.0);
-    float w = max(uSize, 0.02);
+    
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float2 pixelOffset = (gUv - c) * res;
+    float distPx = length(pixelOffset);
+    float2 dir = pixelOffset / max(distPx, 1e-4);
+    
+    float p = saturate(uMix / 100.0);
+    float maxRadiusPx = length(res) * 0.55;
+    float radiusPx = p * maxRadiusPx;
+    float wPx = max(uSize * maxRadiusPx * 0.25, 4.0);
     float rings = max(uCount, 1.0);
     float wave = 0.0;
     [unroll] for (int i = 0; i < 4; i++) {
         if (i >= rings) break;
-        float rr = radius - i * w * 1.8;
-        wave += exp(-pow((r - rr) / w, 2.0) * 2.2);
+        float rr = radiusPx - i * wPx * 1.8;
+        wave += exp(-pow((distPx - rr) / wPx, 2.0) * 2.2);
     }
-    float2 delta = dir * wave * uStrength * 0.55;
+    float2 delta = (dir * wave * uStrength * 40.0) / res;
     float3 col = samp(uv0.xy + delta).rgb;
     col += wave * 0.18;
     col *= 1.0 + wave * 0.12;

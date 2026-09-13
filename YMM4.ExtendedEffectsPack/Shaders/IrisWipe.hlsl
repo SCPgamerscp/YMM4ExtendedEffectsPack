@@ -66,18 +66,25 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     float p = saturate(uMix / 100.0);
     p = p * p * (3.0 - 2.0 * p);
     float2 c = CenterFromPixels(uAngle, uSpread, uBounds);
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    float2 d = (uv - c) * float2(aspect, 1.0);
-    float r = length(d);
-    float radius = p * 1.15 * max(aspect, 1.0);
+    
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float2 pixelOffset = (uv - c) * res;
+    float distPx = length(pixelOffset);
+    
+    // 対角線半径（100% で四隅が同時に完全に覆われる）
+    float maxRadiusPx = length(res) * 0.52;
+    float radiusPx = p * maxRadiusPx;
+    
+    float r = distPx;
     if (uMode > 0.5) {
         float n = max(uCount, 3.0);
-        float a = atan2(d.y, d.x);
+        float a = atan2(pixelOffset.y, pixelOffset.x);
         float stepA = 6.2831853 / n;
         float aa = fmod(a + 3.14159265, stepA) - stepA * 0.5;
-        r = length(d) * cos(aa) / cos(stepA * 0.5);
+        r = distPx * cos(aa) / cos(stepA * 0.5);
     }
-    float mask = smoothstep(radius - uSize, radius + uSize * 0.2, r);
+    float softnessPx = max(uSize * maxRadiusPx * 0.25, 1.0);
+    float mask = smoothstep(radiusPx - softnessPx, radiusPx + softnessPx * 0.2, r);
     float3 src = samp(uv0.xy).rgb;
     float3 hole = float3(uColorR, uColorG, uColorB) * (0.15 + 0.1 * noise(uv * 8.0));
     return float4(lerp(src, hole, mask), 1.0);

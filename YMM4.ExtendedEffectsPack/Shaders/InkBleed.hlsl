@@ -65,25 +65,27 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
     float2 origin = CenterFromPixels(uAngle, uSize, uBounds);
     
-    // アスペクト比補正（縦長画像でも正円を維持）
-    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    float2 delta = (gUv - origin) * float2(aspect, 1.0);
-    float d = length(delta);
+    // 物理ピクセル空間での計算（縦横比に依存しない真円・対角線基準）
+    float2 res = (uBounds.z > 1.0 && uBounds.w > 1.0) ? uBounds.zw : float2(1920.0, 1080.0);
+    float2 pixelOffset = (gUv - origin) * res;
+    float distPx = length(pixelOffset);
     
     float p = saturate(uMix / 100.0);
     if (p <= 0.0001) {
         return samp(uv0.xy);
     }
     
-    // 発生点相対のノイズサンプリング（発生点移動に模様が追従・全方位均等分散）
-    float2 noiseCoords = delta * (3.0 + uCount * 4.0) + 13.37;
+    // 画像の対角線半径（中心から四隅までの最大ピクセル距離）
+    float maxRadiusPx = length(res) * 0.55;
+    float rPx = p * (maxRadiusPx + 10.0);
+    
+    // 発生点相対のノイズサンプリング（等方ピクセルスケール）
+    float2 noiseCoords = (pixelOffset / max(res.y, 1.0)) * (3.0 + uCount * 4.0) + 13.37;
     float n = fbm(noiseCoords);
     
-    float maxRadius = sqrt(aspect * aspect + 1.0) * 0.75;
-    float r = p * (maxRadius + 0.1);
-    float noiseMod = (n - 0.5) * (uSpread * 0.4);
-    float edge = r - d + noiseMod;
-    float mask = smoothstep(-0.03, 0.05, edge);
+    float noiseModPx = (n - 0.5) * (uSpread * 0.4) * maxRadiusPx;
+    float edge = rPx - distPx + noiseModPx;
+    float mask = smoothstep(-maxRadiusPx * 0.02, maxRadiusPx * 0.04, edge);
     
     float4 src = samp(uv0.xy);
     float3 inkColor = float3(uColorR, uColorG, uColorB);
