@@ -63,17 +63,20 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     float4 src = samp(uv);
     
     // Direct2D が提供する正確なテクセルサイズ (uv0.zw)
-    // プレビューの縮小表示でも出力時でも、常にその描画解像度の1テクセルを正確に指す
     float2 texelSize = uv0.zw;
     if (texelSize.x <= 0.0) {
         texelSize.x = 1.0 / max(uBounds.z, 1080.0);
     }
     
-    // 水平ストリークの広がり
-    // uSize: デフォルト0.8（スライダー0〜1.5）
-    // 等間隔ガウスサンプリングにより、縦線の縞模様（バンディング）を完全防止
-    float stepPx = max(uSize * 5.0, 1.0);
+    // 水平ストリークの広がり (uSize: デフォルト0.8, スライダー0〜1.5)
+    // シャープで細く長いシネマティックストリークを形成
+    float stepPx = max(uSize * 6.0, 1.0);
     float2 stepUv = float2(stepPx * texelSize.x, 0.0);
+    
+    // 発光しきい値 (uMix: デフォルト0.62, スライダー0.2〜0.95)
+    // 肌色や中間調（顔の目・鼻・口）を発光させず完全に保護するため、
+    // threshold以上の高輝度超過分のみを抽出（顔の白飛びを完全防止）
+    float threshold = clamp(uMix, 0.45, 0.98);
     
     float3 streak = 0;
     float wsum = 0;
@@ -81,13 +84,14 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     // 1. コアストリーク (35タップ: -17 .. +17)
     [unroll] for (int i = -17; i <= 17; i++) {
         float norm = (float)i / 17.0;
-        float w = exp(-norm * norm * 3.0);
+        float w = exp(-norm * norm * 3.5);
         
         float2 sampleUv = uv + (float)i * stepUv;
         float4 s = samp(sampleUv);
         
         float lumVal = lum(s.rgb);
-        float lm = smoothstep(uMix - 0.08, uMix + 0.12, lumVal);
+        float excess = max(lumVal - threshold, 0.0);
+        float lm = pow(excess / max(1.0 - threshold, 0.01), 1.8);
         
         streak += s.rgb * lm * w;
         wsum += w;
@@ -95,19 +99,20 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     streak /= max(wsum, 1e-4);
     
     // 2. 広域ストリーク (25タップ: -12 .. +12)
-    // 中心から遠くまで滑らかに尾を引くシネマティックロングテール
+    // 左右遠くまでスーッと美しく尾を引くシネマティックロングテール
     float3 wideStreak = 0;
     float wideWsum = 0;
-    float2 wideStepUv = float2(stepPx * 3.5 * texelSize.x, 0.0);
+    float2 wideStepUv = float2(stepPx * 4.0 * texelSize.x, 0.0);
     [unroll] for (int j = -12; j <= 12; j++) {
         float wNorm = (float)j / 12.0;
-        float w = exp(-wNorm * wNorm * 3.2);
+        float w = exp(-wNorm * wNorm * 3.5);
         
         float2 sampleUv = uv + (float)j * wideStepUv;
         float4 s = samp(sampleUv);
         
         float lumVal = lum(s.rgb);
-        float lm = smoothstep(uMix - 0.05, uMix + 0.15, lumVal);
+        float excess = max(lumVal - threshold, 0.0);
+        float lm = pow(excess / max(1.0 - threshold, 0.01), 1.8);
         
         wideStreak += s.rgb * lm * w;
         wideWsum += w;
@@ -116,18 +121,26 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     
     float3 totalStreak = streak * 0.65 + wideStreak * 0.35;
     
-    // レンズゴースト (uCount: Ghosts, デフォルト0.35)
-    float3 ghostCol = 0;
+    // 3. アナモルフィック色収差サテライト (uCount: Ghosts, デフォルト0.35)
+    // 反転ゴーストは完全撤去！実レンズ特有の、赤と青がわずかに分光する光学色収差を付加
+    float3 chromaStreak = totalStreak;
     if (uCount > 0.02) {
-        float2 ghostUv = float2(1.0 - uv.x, uv.y);
-        float4 gs = samp(ghostUv);
-        float glm = smoothstep(uMix * 1.05, 1.0, lum(gs.rgb));
-        ghostCol = gs.rgb * glm * uCount * 0.35;
+        float chromaOffset = stepPx * 2.0 * texelSize.x * uCount;
+        float redSample = samp(uv + float2(chromaOffset, 0.0)).r;
+        float blueSample = samp(uv - float2(chromaOffset, 0.0)).b;
+        chromaStreak.r = lerp(chromaStreak.r, redSample, uCount * 0.35);
+        chromaStreak.b = lerp(chromaStreak.b, blueSample, uCount * 0.35);
     }
     
     float3 flareColor = float3(uColorR, uColorG, uColorB);
-    float3 flareTotal = (totalStreak + ghostCol) * flareColor * (uStrength * 1.8);
+    float3 flareTotal = chromaStreak * flareColor * (uStrength * 2.2);
     
+    // 加算合成
     float3 acc = src.rgb + flareTotal;
-    return float4(acc, src.a);
+    
+    // 画像枠外でも光が見えるようにアルファを計算
+    float flareAlpha = saturate(lum(flareTotal) * 1.5);
+    float outAlpha = max(src.a, flareAlpha);
+    
+    return float4(acc, outAlpha);
 }
