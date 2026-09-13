@@ -26,6 +26,13 @@ float2 GetGlobalUV(float4 posScene, float4 bounds, float2 fallbackUv) {
     return fallbackUv;
 }
 
+float2 CenterFromPixels(float px, float py, float4 bounds) {
+    float2 c = float2(0.5, 0.5);
+    if (bounds.z > 1.0 && bounds.w > 1.0)
+        c += float2(px, py) / bounds.zw;
+    return c;
+}
+
 #define PI 3.14159265
 
 float hash21(float2 p) { return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
@@ -57,7 +64,7 @@ float3 hsv2rgb(float3 c) {
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
     float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    float2 c = float2(uAngle, uSpread);
+    float2 c = CenterFromPixels(uAngle, uSpread, uBounds);
     float2 d = (gUv - c) * float2(aspect, 1.0);
     float r = length(d);
     float wave = sin(r * uCount - uTime * uSpeed);

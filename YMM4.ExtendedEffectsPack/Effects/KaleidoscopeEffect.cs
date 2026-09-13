@@ -30,14 +30,14 @@ public sealed class KaleidoscopeEffect : VideoEffectBase, IPackBindable
     [AnimationSlider("F2", "", -2, 2)]
     public Animation Spin { get => _spin; set => Set(ref _spin, value); }
 
-    Animation _offsetX = new Animation(0.5, 0, 1);
-    [Display(Name = "中心 X", GroupName = "基本")]
-    [AnimationSlider("F2", "", 0, 1)]
+    Animation _offsetX = new Animation(0, -10000, 10000);
+    [Display(Name = "X", GroupName = "中心")]
+    [AnimationSlider("F1", "px", -500, 500)]
     public Animation OffsetX { get => _offsetX; set => Set(ref _offsetX, value); }
 
-    Animation _offsetY = new Animation(0.5, 0, 1);
-    [Display(Name = "中心 Y", GroupName = "基本")]
-    [AnimationSlider("F2", "", 0, 1)]
+    Animation _offsetY = new Animation(0, -10000, 10000);
+    [Display(Name = "Y", GroupName = "中心")]
+    [AnimationSlider("F1", "px", -500, 500)]
     public Animation OffsetY { get => _offsetY; set => Set(ref _offsetY, value); }
 
     public override IEnumerable<string> CreateExoVideoFilters(int keyFrameIndex, ExoOutputDescription exoOutputDescription) => [];

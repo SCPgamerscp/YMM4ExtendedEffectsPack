@@ -15,14 +15,14 @@ public sealed class GodRaysEffect : VideoEffectBase, IPackBindable
 {
     public override string Label => "ゴッドレイ";
 
-    Animation _lightX = new Animation(0.5, -0.2, 1.2);
-    [Display(Name = "光源 X", GroupName = "基本")]
-    [AnimationSlider("F2", "", -0.2, 1.2)]
+    Animation _lightX = new Animation(0, -10000, 10000);
+    [Display(Name = "X", GroupName = "光源")]
+    [AnimationSlider("F1", "px", -500, 500)]
     public Animation LightX { get => _lightX; set => Set(ref _lightX, value); }
 
-    Animation _lightY = new Animation(-0.05, -0.3, 1.2);
-    [Display(Name = "光源 Y", GroupName = "基本")]
-    [AnimationSlider("F2", "", -0.3, 1.2)]
+    Animation _lightY = new Animation(0, -10000, 10000);
+    [Display(Name = "Y", GroupName = "光源")]
+    [AnimationSlider("F1", "px", -500, 500)]
     public Animation LightY { get => _lightY; set => Set(ref _lightY, value); }
 
     Animation _density = new Animation(24, 5, 50);

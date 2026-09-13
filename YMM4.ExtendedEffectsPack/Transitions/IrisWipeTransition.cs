@@ -30,14 +30,14 @@ public sealed class IrisWipeTransitionParameter : PackTransitionParameter
     [AnimationSlider("F2", "", 0, 0.2)]
     public Animation Softness { get => _softness; set => Set(ref _softness, value); }
 
-    Animation _centerX = new Animation(0.5, 0, 1);
-    [Display(Name = "中心 X", GroupName = "基本")]
-    [AnimationSlider("F2", "", 0, 1)]
+    Animation _centerX = new Animation(0, -10000, 10000);
+    [Display(Name = "X", GroupName = "中心")]
+    [AnimationSlider("F1", "px", -500, 500)]
     public Animation CenterX { get => _centerX; set => Set(ref _centerX, value); }
 
-    Animation _centerY = new Animation(0.5, 0, 1);
-    [Display(Name = "中心 Y", GroupName = "基本")]
-    [AnimationSlider("F2", "", 0, 1)]
+    Animation _centerY = new Animation(0, -10000, 10000);
+    [Display(Name = "Y", GroupName = "中心")]
+    [AnimationSlider("F1", "px", -500, 500)]
     public Animation CenterY { get => _centerY; set => Set(ref _centerY, value); }
 
     IrisWipeShape _shape = IrisWipeShape.Circle;
