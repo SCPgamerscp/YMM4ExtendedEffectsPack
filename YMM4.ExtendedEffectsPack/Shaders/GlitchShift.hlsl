@@ -23,10 +23,7 @@ cbuffer Constants : register(b0)
 };
 
 float2 GetGlobalUV(float4 posScene, float4 bounds, float2 fallbackUv) {
-    if (bounds.z <= 1.0 || bounds.w <= 1.0) {
-        return fallbackUv;
-    }
-    return (posScene.xy - bounds.xy) / bounds.zw;
+    return fallbackUv;
 }
 
 #define PI 3.14159265
@@ -58,22 +55,42 @@ float3 hsv2rgb(float3 c) {
 }
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
-    float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
+    float2 uv = uv0.xy;
     float p = saturate(uMix / 100.0);
     float peak = pow(1.0 - abs(p * 2.0 - 1.0), 0.55);
     float blocks = max(uCount, 4.0);
-    float row = floor(gUv.y * blocks); float col = floor(gUv.x * blocks);
-    float h = hash21(float2(row, floor(uTime * 24.0)));
-    float h2 = hash21(float2(col, row + floor(uTime * 11.0)));
-    float2 uv2 = uv0.xy;
-    if (uMode < 0.5) uv2.x += (h - 0.5) * uSpread * 0.18 * peak;
-    else if (uMode < 1.5) uv2 += (float2(hash21(float2(col, row)), hash21(float2(row, col))) - 0.5) * uSpread * 0.22 * peak;
-    else uv2.x += step(0.55, h) * (h2 - 0.5) * uSpread * 0.45 * peak;
+    float row = floor(uv.y * blocks);
+    float col = floor(uv.x * blocks);
+    
+    // 時間によるコマ送りアニメーション
+    float tFast = floor(uTime * 24.0);
+    float tMid  = floor(uTime * 18.0);
+    float tSlow = floor(uTime * 11.0);
+    
+    float h = hash21(float2(row, tFast));
+    float h2 = hash21(float2(col, row + tSlow));
+    
+    float2 uv2 = uv;
+    if (uMode < 0.5) {
+        // RGBスプリット
+        uv2.x += (h - 0.5) * uSpread * 0.18 * peak;
+    } else if (uMode < 1.5) {
+        // ブロックずれ（時間でランダムに激しく切り替わる）
+        float bSeed = tMid * 13.17;
+        float2 bShift = float2(hash21(float2(col + bSeed, row)), hash21(float2(row, col + bSeed))) - 0.5;
+        // 特定のブロックだけがずれるグリッチ感（ステップ閾値）
+        float doShift = step(0.35, hash21(float2(col + bSeed * 0.5, row - bSeed * 0.3)));
+        uv2 += bShift * uSpread * 0.25 * peak * doShift;
+    } else {
+        // スライス
+        uv2.x += step(0.55, h) * (h2 - 0.5) * uSpread * 0.45 * peak;
+    }
+    
     float split = uSpread * 0.04 * peak;
     float3 color = float3(samp(uv2 + float2(split, 0.0)).r, samp(uv2).g, samp(uv2 - float2(split, 0.0)).b);
-    float n = hash21(gUv * 800.0 + floor(uTime * 60.0));
+    float n = hash21(uv * 800.0 + floor(uTime * 60.0));
     color = lerp(color, n, uStrength * peak * 0.35 * step(0.82, n));
     float hold = smoothstep(0.0, 0.12, p) * (1.0 - smoothstep(0.88, 1.0, p));
-    color = lerp(samp(uv0.xy).rgb, color, hold);
-    return float4(color, samp(uv0.xy).a);
+    color = lerp(samp(uv).rgb, color, hold);
+    return float4(color, samp(uv).a);
 }
