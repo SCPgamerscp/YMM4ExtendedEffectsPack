@@ -125,7 +125,8 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     col.rgb *= dotFactor;
     
     // ディザリング (uFlagB > 0.5)
-    float dither = (uFlagB > 0.5) ? (GetDither(posScene.xy) * 0.08) : 0.0;
+    float2 localPx = (uBounds.z > 1.0 && uBounds.w > 1.0) ? (uv0.xy * uBounds.zw) : (uv0.xy * float2(1920.0, 1080.0));
+    float dither = (uFlagB > 0.5) ? (GetDither(localPx) * 0.08) : 0.0;
     
     // レトロ減色 (uCount: 0=Off, 1=16色, 2=64色, 3=GB4階調)
     if (uCount > 2.5) {

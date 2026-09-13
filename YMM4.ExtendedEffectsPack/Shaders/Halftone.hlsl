@@ -58,12 +58,13 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     float4 src = samp(uv0.xy);
     float g = lum(src.rgb);
     float scale = max(uSize, 4.0);
-    float2 grid = posScene.xy / scale;
+    float2 localPx = (uBounds.z > 1.0 && uBounds.w > 1.0) ? (uv0.xy * uBounds.zw) : (uv0.xy * float2(1920.0, 1080.0));
+    float2 grid = localPx / scale;
     float2 f = frac(grid) - 0.5;
     float r = length(f);
     float radius = sqrt(1.0 - g) * 0.5 * uStrength;
     float dotPattern = 1.0 - smoothstep(radius - 0.05, radius + 0.05, r);
     float3 ink = float3(uColorR, uColorG, uColorB);
     float3 col = lerp(src.rgb, ink, dotPattern * uMix);
-    return float4(col, 1.0);
+    return float4(col, src.a);
 }
