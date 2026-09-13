@@ -31,7 +31,21 @@ internal sealed class KaleidoscopeCustomEffect : D2D1CustomShaderEffectBase, IPa
         public override void MapInputRectsToOutputRect(RawRect[] inputRects, RawRect[] inputOpaqueSubRects, out RawRect outputRect, out RawRect outputOpaqueSubRect)
         {
             base.MapInputRectsToOutputRect(inputRects, inputOpaqueSubRects, out outputRect, out outputOpaqueSubRect);
+            if (inputRects.Length > 0)
+            {
+                inputRect = inputRects[0];
+                int w = inputRect.Right - inputRect.Left;
+                int h = inputRect.Bottom - inputRect.Top;
+                int maxDim = System.Math.Max(w, h);
+                int expand = (int)(maxDim * 1.5);
+                outputRect = new RawRect(inputRect.Left - expand, inputRect.Top - expand, inputRect.Right + expand, inputRect.Bottom + expand);
+            }
+            outputOpaqueSubRect = default(RawRect);
             UpdateConstants();
+        }
+        public override void MapOutputRectToInputRects(RawRect outputRect, RawRect[] inputRects)
+        {
+            inputRects[0] = inputRect;
         }
         [CustomEffectProperty(PropertyType.Float, 0)] public float Strength { get => _cb.Strength; set { _cb.Strength = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 1)] public float Size { get => _cb.Size; set { _cb.Size = value; UpdateConstants(); } }

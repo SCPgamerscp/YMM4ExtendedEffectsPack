@@ -57,29 +57,42 @@ float3 hsv2rgb(float3 c) {
     return c.z * lerp(1, saturate(p-1), c.y);
 }
 
-float2 WrapMirror(float2 uv) {
-    return abs(frac(uv * 0.5 + 0.5) * 2.0 - 1.0);
-}
-
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
     float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
     
+    // 中心座標 (OffsetX, OffsetY)
     float2 center = float2(uAngle, uSpread);
     float2 p = (gUv - center) * float2(aspect, 1.0);
-    float r = length(p);
     
-    float a = atan2(p.y, p.x) + uTime * uSpeed * 1.5;
-    float slices = max(uCount, 2.0);
-    float seg = 6.28318530718 / slices;
-    a = abs(fmod(abs(a), seg) - seg * 0.5);
+    // 回転速度 (Spin)
+    float rot = uTime * uSpeed * 1.5;
+    float cosR = cos(rot);
+    float sinR = sin(rot);
+    p = float2(p.x * cosR - p.y * sinR, p.x * sinR + p.y * cosR);
     
-    float zoom = max(uSize, 0.001);
-    float2 kuv_g = float2(cos(a), sin(a)) * (r / zoom) / float2(aspect, 1.0) + center;
-    float2 delta = kuv_g - gUv;
-    float2 kuv = uv0.xy + delta;
+    // ズーム (Zoom)
+    p /= max(uSize, 0.05);
     
-    float4 col = samp(WrapMirror(kuv));
+    // CC Kaleida: Coxeter 幾何学鏡映折り畳み
+    int numSlices = clamp((int)round(uCount), 2, 16);
+    float seg = 3.14159265359 / (float)numSlices;
+    
+    [loop]
+    for (int i = 0; i < numSlices; i++) {
+        float ang = seg * (float)i;
+        float2 n = float2(cos(ang), sin(ang));
+        float d = dot(p, n);
+        p = p - 2.0 * min(0.0, d) * n;
+    }
+    
+    // 中心基準のシームレス・ピンポンタイリング (隙間なく画面全体へ敷き詰める)
+    float2 shifted = frac((p / float2(aspect, 1.0) + center) * 0.5) * 2.0;
+    float2 kuv_g = abs(shifted - 1.0);
+    
+    float2 sampUv = (uBounds.z > 1.0 && uBounds.w > 1.0) ? kuv_g : (uv0.xy + (kuv_g - gUv));
+    float4 col = samp(sampUv);
+    
     float4 src = samp(uv0.xy);
     return lerp(src, col, saturate(uStrength));
 }
