@@ -59,21 +59,21 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float2 uv = uv0.xy; float p=saturate(uMix/100.0);
-    float peak=pow(1-abs(p*2-1),0.55);
-    float blocks=max(uCount,4);
-    float row=floor(uv.y*blocks); float col=floor(uv.x*blocks);
-    float h=hash21(float2(row, floor(uTime*24)));
-    float h2=hash21(float2(col, row+floor(uTime*11)));
-    float2 uv2=uv;
-    if (uMode<0.5) uv2.x += (h-0.5)*uSpread*0.18*peak;
-    else if (uMode<1.5) uv2 += (float2(hash21(float2(col,row)), hash21(float2(row,col)))-0.5)*uSpread*0.22*peak;
-    else uv2.x += step(0.55,h)*(h2-0.5)*uSpread*0.45*peak;
-    float split=uSpread*0.04*peak;
-    float3 color=float3(samp(uv2+float2(split,0)).r, samp(uv2).g, samp(uv2-float2(split,0)).b);
-    float n=hash21(uv*800+floor(uTime*60));
-    color=lerp(color, n, uStrength*peak*0.35*step(0.82,n));
-    float hold=smoothstep(0,0.12,p)*(1-smoothstep(0.88,1,p));
-    color=lerp(samp(uv).rgb, color, hold);
-    return float4(color,1);
+    float p = saturate(uMix / 100.0);
+    float peak = pow(1.0 - abs(p * 2.0 - 1.0), 0.55);
+    float blocks = max(uCount, 4.0);
+    float row = floor(gUv.y * blocks); float col = floor(gUv.x * blocks);
+    float h = hash21(float2(row, floor(uTime * 24.0)));
+    float h2 = hash21(float2(col, row + floor(uTime * 11.0)));
+    float2 uv2 = uv0.xy;
+    if (uMode < 0.5) uv2.x += (h - 0.5) * uSpread * 0.18 * peak;
+    else if (uMode < 1.5) uv2 += (float2(hash21(float2(col, row)), hash21(float2(row, col))) - 0.5) * uSpread * 0.22 * peak;
+    else uv2.x += step(0.55, h) * (h2 - 0.5) * uSpread * 0.45 * peak;
+    float split = uSpread * 0.04 * peak;
+    float3 color = float3(samp(uv2 + float2(split, 0.0)).r, samp(uv2).g, samp(uv2 - float2(split, 0.0)).b);
+    float n = hash21(gUv * 800.0 + floor(uTime * 60.0));
+    color = lerp(color, n, uStrength * peak * 0.35 * step(0.82, n));
+    float hold = smoothstep(0.0, 0.12, p) * (1.0 - smoothstep(0.88, 1.0, p));
+    color = lerp(samp(uv0.xy).rgb, color, hold);
+    return float4(color, samp(uv0.xy).a);
 }

@@ -59,17 +59,17 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float2 uv = uv0.xy; float2 p=uv*2-1;
-    float open=uMix/100.0;
-    if (uFlagA>0.5) {
-        float t=frac(uTime*max(uSpeed,5)/60.0);
-        if (t<0.08) open *= 1 - smoothstep(0,0.03,t) + smoothstep(0.05,0.08,t);
+    float2 p = gUv * 2.0 - 1.0;
+    float open = uMix / 100.0;
+    if (uFlagA > 0.5) {
+        float t = frac(uTime * max(uSpeed, 5.0) / 60.0);
+        if (t < 0.08) open *= 1.0 - smoothstep(0.0, 0.03, t) + smoothstep(0.05, 0.08, t);
     }
-    float curve=0.32*p.x*p.x;
-    float upper=1-open*(1.15-curve);
-    float lower=-1+open*(1.05-curve);
-    float lid=max(smoothstep(upper-0.04,upper+0.01,p.y), smoothstep(lower+0.04,lower-0.01,p.y));
-    float4 col=samp(uv);
-    col.rgb *= 0.22+0.78*open;
-    return float4(lerp(col.rgb, float3(uColorR,uColorG,uColorB), saturate(lid)),1);
+    float curve = 0.32 * p.x * p.x;
+    float upper = 1.0 - open * (1.15 - curve);
+    float lower = -1.0 + open * (1.05 - curve);
+    float lid = max(smoothstep(upper - 0.04, upper + 0.01, p.y), smoothstep(lower + 0.04, lower - 0.01, p.y));
+    float4 col = samp(uv0.xy);
+    col.rgb *= 0.22 + 0.78 * open;
+    return float4(lerp(col.rgb, float3(uColorR, uColorG, uColorB), saturate(lid)), col.a);
 }

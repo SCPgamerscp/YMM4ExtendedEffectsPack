@@ -59,11 +59,19 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float2 uv = uv0.xy; float2 origin=float2(uAngle,uSize);
-    float p=uMix/100; float d=length(uv-origin);
-    float n=fbm(uv*(3+uCount*4)+2);
-    float edge=p*1.35 - d + (n-0.5)*uSpread*0.55;
-    float mask=smoothstep(-0.04,0.08,edge);
-    float4 src=samp(uv);
-    return float4(lerp(src.rgb, float3(uColorR,uColorG,uColorB), mask),1);
+    float2 origin = float2(uAngle, uSize);
+    
+    // アスペクト比補正（縦長画像でも正円を維持）
+    float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
+    float2 delta = (gUv - origin) * float2(aspect, 1.0);
+    float d = length(delta);
+    
+    float p = uMix / 100.0;
+    float n = fbm(gUv * (3.0 + uCount * 4.0) + 2.0);
+    float edge = p * 1.35 * max(aspect, 1.0) - d + (n - 0.5) * uSpread * 0.55;
+    float mask = smoothstep(-0.04, 0.08, edge);
+    
+    float4 src = samp(uv0.xy);
+    float3 inkColor = float3(uColorR, uColorG, uColorB);
+    return float4(lerp(src.rgb, inkColor, mask), src.a);
 }

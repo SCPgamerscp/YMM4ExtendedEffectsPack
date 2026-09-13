@@ -59,16 +59,16 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float2 uv = uv0.xy; float n=max(uCount,4);
-    float2 grid=floor(uv*n); float2 bc=(grid+0.5)/n;
-    float dist=uMode<0.5?bc.x:(uMode<1.5?bc.y:length(bc-0.5));
-    float wave=sin(dist*10 - uTime*uSpeed);
-    if (uSpread>0.5) wave=floor(wave*4)/4;
-    float2 offset=uMode<0.5?float2(0,wave*uStrength*0.001):(uMode<1.5?float2(wave*uStrength*0.001,0):normalize(bc-0.5+1e-5)*wave*uStrength*0.001);
-    float4 col=samp(uv+offset);
-    if (uFlagA>0.5) {
-        float2 bd=abs(frac(uv*n)-0.5);
-        if (max(bd.x,bd.y)>0.46) col.rgb*=0.65;
+    float n = max(uCount, 4.0);
+    float2 grid = floor(gUv * n); float2 bc = (grid + 0.5) / n;
+    float dist = uMode < 0.5 ? bc.x : (uMode < 1.5 ? bc.y : length(bc - 0.5));
+    float wave = sin(dist * 10.0 - uTime * uSpeed);
+    if (uSpread > 0.5) wave = floor(wave * 4.0) / 4.0;
+    float2 offset = uMode < 0.5 ? float2(0.0, wave * uStrength * 0.001) : (uMode < 1.5 ? float2(wave * uStrength * 0.001, 0.0) : normalize(bc - 0.5 + 1e-5) * wave * uStrength * 0.001);
+    float4 col = samp(uv0.xy + offset);
+    if (uFlagA > 0.5) {
+        float2 bd = abs(frac(gUv * n) - 0.5);
+        if (max(bd.x, bd.y) > 0.46) col.rgb *= 0.65;
     }
     return col;
 }

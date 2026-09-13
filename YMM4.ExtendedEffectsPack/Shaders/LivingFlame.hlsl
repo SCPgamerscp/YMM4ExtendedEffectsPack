@@ -59,20 +59,20 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float2 uv = uv0.xy; float h=1-uv.y;
-    float2 nUV=uv*float2(3,5.5)-float2(0,uTime*uSpeed);
-    float n1=fbm(nUV); float n2=fbm(nUV*2.1+1.7);
-    float2 distort=float2(n1-0.5, -abs(n2))*(uStrength*0.0045*(0.25+h*1.4));
-    float4 src=samp(uv+distort);
-    if (uFlagA>0.5) {
-        float t=saturate(lum(src.rgb)*1.1+h*0.35);
-        float3 pal=lerp(float3(0.12,0.02,0), lerp(float3(0.9,0.18,0.02), float3(1,0.92,0.35), t), t);
-        if (uMode>0.5 && uMode<1.5) pal=lerp(float3(0,0.02,0.12), lerp(float3(0.05,0.35,0.95), float3(0.75,0.95,1), t), t);
-        if (uMode>1.5) pal=lerp(float3(0.08,0,0.12), lerp(float3(0.55,0.05,0.85), float3(0.95,0.55,1), t), t);
-        src.rgb=lerp(src.rgb, pal, 0.82);
+    float h = 1.0 - gUv.y;
+    float2 nUV = gUv * float2(3.0, 5.5) - float2(0.0, uTime * uSpeed);
+    float n1 = fbm(nUV); float n2 = fbm(nUV * 2.1 + 1.7);
+    float2 distort = float2(n1 - 0.5, -abs(n2)) * (uStrength * 0.0045 * (0.25 + h * 1.4));
+    float4 src = samp(uv0.xy + distort);
+    if (uFlagA > 0.5) {
+        float t = saturate(lum(src.rgb) * 1.1 + h * 0.35);
+        float3 pal = lerp(float3(0.12, 0.02, 0.0), lerp(float3(0.9, 0.18, 0.02), float3(1.0, 0.92, 0.35), t), t);
+        if (uMode > 0.5 && uMode < 1.5) pal = lerp(float3(0.0, 0.02, 0.12), lerp(float3(0.05, 0.35, 0.95), float3(0.75, 0.95, 1.0), t), t);
+        if (uMode > 1.5) pal = lerp(float3(0.08, 0.0, 0.12), lerp(float3(0.55, 0.05, 0.85), float3(0.95, 0.55, 1.0), t), t);
+        src.rgb = lerp(src.rgb, pal, 0.82);
     }
-    float burn=uMix/100;
-    float dissolve=smoothstep(burn-0.12, burn+0.18, h+n2*0.25);
-    src.rgb*=1-dissolve*burn;
+    float burn = uMix / 100.0;
+    float dissolve = smoothstep(burn - 0.12, burn + 0.18, h + n2 * 0.25);
+    src.rgb *= 1.0 - dissolve * burn;
     return src;
 }

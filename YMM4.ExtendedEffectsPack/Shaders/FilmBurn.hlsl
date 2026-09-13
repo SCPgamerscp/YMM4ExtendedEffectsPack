@@ -59,13 +59,13 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float2 uv = uv0.xy; float p=uMix/100;
-    float band=uv.x-(p*1.6-0.3);
-    float heat=exp(-pow(band/(0.18*max(uSize,0.1)),2));
-    float3 tone=uMode<0.5?float3(1,0.55,0.18):(uMode<1.5?hsv2rgb(float3(frac(uv.x*0.4),0.55,1)):float3(0.45,0.85,1));
-    float4 src=samp(uv);
-    float3 col=src.rgb+tone*heat*1.35;
-    if (uFlagA>0.5) col+=(hash21(uv*400+uTime*60)-0.5)*0.08;
-    if (uFlagB>0.5) col*=1-smoothstep(0.45,-0.1,band)*(1-p)*0.85;
-    return float4(col,1);
+    float p = uMix / 100.0;
+    float band = gUv.x - (p * 1.6 - 0.3);
+    float heat = exp(-pow(band / (0.18 * max(uSize, 0.1)), 2.0));
+    float3 tone = uMode < 0.5 ? float3(1.0, 0.55, 0.18) : (uMode < 1.5 ? hsv2rgb(float3(frac(gUv.x * 0.4), 0.55, 1.0)) : float3(0.45, 0.85, 1.0));
+    float4 src = samp(uv0.xy);
+    float3 col = src.rgb + tone * heat * 1.35;
+    if (uFlagA > 0.5) col += (hash21(gUv * 400.0 + uTime * 60.0) - 0.5) * 0.08;
+    if (uFlagB > 0.5) col *= 1.0 - smoothstep(0.45, -0.1, band) * (1.0 - p) * 0.85;
+    return float4(col, src.a);
 }
