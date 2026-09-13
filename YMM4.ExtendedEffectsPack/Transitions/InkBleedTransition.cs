@@ -30,14 +30,14 @@ public sealed class InkBleedTransitionParameter : PackTransitionParameter
     [AnimationSlider("F2", "", 0, 1)]
     public Animation Veins { get => _veins; set => Set(ref _veins, value); }
 
-    Animation _originX = new Animation(0.5, 0, 1);
-    [Display(Name = "発生点 X", GroupName = "基本")]
-    [AnimationSlider("F2", "", 0, 1)]
+    Animation _originX = new Animation(0, -10000, 10000);
+    [Display(Name = "X", GroupName = "発生点")]
+    [AnimationSlider("F1", "px", -500, 500)]
     public Animation OriginX { get => _originX; set => Set(ref _originX, value); }
 
-    Animation _originY = new Animation(0.5, 0, 1);
-    [Display(Name = "発生点 Y", GroupName = "基本")]
-    [AnimationSlider("F2", "", 0, 1)]
+    Animation _originY = new Animation(0, -10000, 10000);
+    [Display(Name = "Y", GroupName = "発生点")]
+    [AnimationSlider("F1", "px", -500, 500)]
     public Animation OriginY { get => _originY; set => Set(ref _originY, value); }
 
     Color _tint = Color.FromRgb(17, 17, 20);

@@ -74,6 +74,50 @@ class CatalogTests(unittest.TestCase):
         text = (EFFECTS / "PrismWhipEffect.cs").read_text(encoding="utf-8")
         self.assertIn("プリズムウィップ", text)
 
+    def test_center_xy_are_pixels_and_default_centered(self):
+        """X/Y position params must be pixel offsets from item center (YMM4 convention)."""
+        files = list(EFFECTS.glob("*Effect.cs")) + list(TRANS.glob("*Transition.cs"))
+        files = [p for p in files if "Custom" not in p.name]
+        labeled = []
+        for path in files:
+            text = path.read_text(encoding="utf-8-sig")
+            if not re.search(r'public Animation (Center[XY]|Offset[XY]|Light[XY]|Origin[XY])\b', text):
+                continue
+            labeled.append(path.name)
+            self.assertRegex(
+                text,
+                r'\[AnimationSlider\("F1", "px", -500, 500\)\]',
+                f"{path.name} X/Y should be pixel sliders",
+            )
+            self.assertNotRegex(
+                text,
+                r'Animation _(center[XY]|offset[XY]|light[XY]|origin[XY]) = new Animation\((?!0,)',
+                f"{path.name} X/Y default must be 0 (item center)",
+            )
+            self.assertNotRegex(
+                text,
+                r'\[AnimationSlider\("F2", "", 0, 1\)\]\n\s+public Animation (Center[XY]|Offset[XY]|Light[XY]|Origin[XY])',
+                f"{path.name} still uses 0-1 UV for a position param",
+            )
+        expected = {
+            "ShockwaveEffect.cs", "SpeedLinesEffect.cs", "SpotlightEffect.cs",
+            "WaterRippleEffect.cs", "VortexSwirlEffect.cs", "IrisWipeEffect.cs",
+            "ZoomPunchEffect.cs", "KaleidoscopeEffect.cs", "GodRaysEffect.cs",
+            "InkBleedEffect.cs",
+            "ShockwaveTransition.cs", "SpotlightTransition.cs", "VortexSwirlTransition.cs",
+            "IrisWipeTransition.cs", "ZoomPunchTransition.cs", "InkBleedTransition.cs",
+        }
+        self.assertEqual(set(labeled), expected)
+
+        shaders = [
+            "Shockwave", "SpeedLines", "Spotlight", "WaterRipple", "VortexSwirl",
+            "IrisWipe", "ZoomPunch", "Kaleidoscope", "GodRays", "InkBleed",
+        ]
+        for name in shaders:
+            hlsl = (SHADERS / f"{name}.hlsl").read_text(encoding="utf-8")
+            self.assertIn("CenterFromPixels", hlsl, name)
+            self.assertNotIn("saturate(uCount)", hlsl, name)
+
     def test_csproj_embeds_shaders_and_does_not_ship_sdk(self):
         project = (PKG / "YMM4.ExtendedEffectsPack.csproj").read_text(encoding="utf-8")
         self.assertIn("<Private>false</Private>", project)

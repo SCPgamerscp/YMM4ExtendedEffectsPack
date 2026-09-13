@@ -26,6 +26,13 @@ float2 GetGlobalUV(float4 posScene, float4 bounds, float2 fallbackUv) {
     return fallbackUv;
 }
 
+float2 CenterFromPixels(float px, float py, float4 bounds) {
+    float2 c = float2(0.5, 0.5);
+    if (bounds.z > 1.0 && bounds.w > 1.0)
+        c += float2(px, py) / bounds.zw;
+    return c;
+}
+
 #define PI 3.14159265
 
 float hash21(float2 p) { return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
@@ -56,17 +63,27 @@ float3 hsv2rgb(float3 c) {
 
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
-    float2 origin = float2(uAngle, uSize);
+    float2 origin = CenterFromPixels(uAngle, uSize, uBounds);
     
     // アスペクト比補正（縦長画像でも正円を維持）
     float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
     float2 delta = (gUv - origin) * float2(aspect, 1.0);
     float d = length(delta);
     
-    float p = uMix / 100.0;
-    float n = fbm(gUv * (3.0 + uCount * 4.0) + 2.0);
-    float edge = p * 1.35 * max(aspect, 1.0) - d + (n - 0.5) * uSpread * 0.55;
-    float mask = smoothstep(-0.04, 0.08, edge);
+    float p = saturate(uMix / 100.0);
+    if (p <= 0.0001) {
+        return samp(uv0.xy);
+    }
+    
+    // 発生点相対のノイズサンプリング（発生点移動に模様が追従・全方位均等分散）
+    float2 noiseCoords = delta * (3.0 + uCount * 4.0) + 13.37;
+    float n = fbm(noiseCoords);
+    
+    float maxRadius = sqrt(aspect * aspect + 1.0) * 0.75;
+    float r = p * (maxRadius + 0.1);
+    float noiseMod = (n - 0.5) * (uSpread * 0.4);
+    float edge = r - d + noiseMod;
+    float mask = smoothstep(-0.03, 0.05, edge);
     
     float4 src = samp(uv0.xy);
     float3 inkColor = float3(uColorR, uColorG, uColorB);

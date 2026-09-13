@@ -26,6 +26,13 @@ float2 GetGlobalUV(float4 posScene, float4 bounds, float2 fallbackUv) {
     return fallbackUv;
 }
 
+float2 CenterFromPixels(float px, float py, float4 bounds) {
+    float2 c = float2(0.5, 0.5);
+    if (bounds.z > 1.0 && bounds.w > 1.0)
+        c += float2(px, py) / bounds.zw;
+    return c;
+}
+
 #define PI 3.14159265
 
 float hash21(float2 p) { return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
@@ -59,7 +66,7 @@ float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:T
     float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
     
     // 中心座標 (OffsetX, OffsetY)
-    float2 center = float2(uAngle, uSpread);
+    float2 center = CenterFromPixels(uAngle, uSpread, uBounds);
     float2 p = (gUv - center) * float2(aspect, 1.0);
     
     // 回転速度 (Spin)

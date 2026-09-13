@@ -30,14 +30,14 @@ public sealed class SpeedLinesEffect : VideoEffectBase, IPackBindable
     [AnimationSlider("F2", "", 0, 1)]
     public Animation Contrast { get => _contrast; set => Set(ref _contrast, value); }
 
-    Animation _centerX = new Animation(0.5, 0, 1);
-    [Display(Name = "中心 X", GroupName = "基本")]
-    [AnimationSlider("F2", "", 0, 1)]
+    Animation _centerX = new Animation(0, -10000, 10000);
+    [Display(Name = "X", GroupName = "中心")]
+    [AnimationSlider("F1", "px", -500, 500)]
     public Animation CenterX { get => _centerX; set => Set(ref _centerX, value); }
 
-    Animation _centerY = new Animation(0.45, 0, 1);
-    [Display(Name = "中心 Y", GroupName = "基本")]
-    [AnimationSlider("F2", "", 0, 1)]
+    Animation _centerY = new Animation(0, -10000, 10000);
+    [Display(Name = "Y", GroupName = "中心")]
+    [AnimationSlider("F1", "px", -500, 500)]
     public Animation CenterY { get => _centerY; set => Set(ref _centerY, value); }
 
     Color _tint = Color.FromRgb(12, 12, 14);
