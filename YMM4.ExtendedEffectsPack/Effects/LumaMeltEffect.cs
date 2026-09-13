@@ -57,9 +57,10 @@ public sealed class LumaMeltEffect : VideoEffectBase, IPackBindable
     public PackUniforms BuildUniforms(EffectDescription d)
     {
         var f = d.ItemPosition.Frame; var len = d.ItemDuration.Frame; var fps = d.FPS;
+        var amt = (float)Amount.GetValue(f, len, fps);
         return new PackUniforms {
-            Strength = (float)Amount.GetValue(f, len, fps),
-            Size = 0f,
+            Strength = amt,
+            Size = amt,
             Speed = 0f,
             Angle = 0f,
             Count = 0f,

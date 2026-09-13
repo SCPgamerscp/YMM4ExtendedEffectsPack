@@ -60,18 +60,46 @@ float3 hsv2rgb(float3 c) {
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
     float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    float cycle = frac(uTime * uSpeed);
-    float b1 = exp(-cycle * 18.0) * sin(cycle * 30.0);
-    float c2 = frac(cycle + 0.22);
-    float b2 = exp(-c2 * 22.0) * sin(c2 * 35.0) * 0.7;
-    float pulse = max(0.0, b1 + b2) * uStrength;
-    float z = 1.0 + pulse * uSize * 0.5;
+    
+    float cycle = frac(uTime * max(uSpeed, 0.01));
+    float pulse = 0.0;
+    
+    // 鼓動モード (uMode: 0=Ecg, 1=Sine)
+    if (uMode < 0.5) {
+        // ドッ・クン (2段拍動)
+        float p1 = saturate(cycle / 0.16);
+        float b1 = sin(p1 * 3.14159265) * exp(-cycle * 12.0);
+        float c2 = max(0.0, cycle - 0.18);
+        float p2 = saturate(c2 / 0.16);
+        float b2 = sin(p2 * 3.14159265) * exp(-c2 * 12.0) * 0.65;
+        pulse = max(b1, b2);
+    } else {
+        // シンプル弾み
+        float p = saturate(cycle / 0.35);
+        pulse = sin(p * 3.14159265) * exp(-cycle * 5.0);
+    }
+    
+    // 拡縮強度
+    float scale = max(uStrength, uSize);
+    float z = 1.0 + pulse * scale;
     float2 zuv_g = (gUv - 0.5) / z + 0.5;
     float2 delta = zuv_g - gUv;
     float2 zuv = uv0.xy + delta;
-    float4 col = samp(zuv);
-    col.r += pulse * uSpread * 0.35;
-    float r = length((gUv - 0.5) * float2(aspect, 1.0));
-    col.rgb *= 1.0 - pulse * smoothstep(0.2, 0.9, r) * uMix;
+    
+    // 色収差ブレ (uSpread: 0~15)
+    float2 chromaDir = normalize(gUv - 0.5 + 1e-5);
+    float2 cShift = chromaDir * (pulse * uSpread * 0.0015);
+    float rCol = samp(zuv + cShift).r;
+    float gCol = samp(zuv).g;
+    float bCol = samp(zuv - cShift).b;
+    float aCol = samp(zuv).a;
+    float4 col = float4(rCol, gCol, bCol, aCol);
+    
+    // 周辺フラッシュ (uMix, FlashColor)
+    float dist = length((gUv - 0.5) * float2(aspect, 1.0));
+    float flashMask = smoothstep(0.25, 0.9, dist) * pulse * saturate(uMix);
+    float3 flashCol = float3(uColorR, uColorG, uColorB);
+    col.rgb = col.rgb + flashCol * flashMask * 1.5;
+    
     return col;
 }

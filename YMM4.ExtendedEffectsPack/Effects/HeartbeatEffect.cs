@@ -62,10 +62,11 @@ public sealed class HeartbeatEffect : VideoEffectBase, IPackBindable
     public PackUniforms BuildUniforms(EffectDescription d)
     {
         var f = d.ItemPosition.Frame; var len = d.ItemDuration.Frame; var fps = d.FPS;
+        var scaleVal = (float)Scale.GetValue(f, len, fps) / 100f;
         return new PackUniforms {
-            Strength = (float)Scale.GetValue(f, len, fps),
-            Size = 0f,
-            Speed = (float)Bpm.GetValue(f, len, fps),
+            Strength = scaleVal,
+            Size = scaleVal,
+            Speed = (float)Bpm.GetValue(f, len, fps) / 60f,
             Angle = 0f,
             Count = 0f,
             Mix = (float)Flash.GetValue(f, len, fps),

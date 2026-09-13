@@ -60,16 +60,43 @@ float3 hsv2rgb(float3 c) {
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
     float p = saturate(uMix / 100.0);
-    float4 col = samp(uv0.xy);
-    float l = lum(col.rgb);
-    float n = fbm(gUv * 6.0);
-    float threshold = p * 1.25;
-    float melt = smoothstep(threshold - uSpread * 0.2, threshold + 0.05, l * 0.7 + n * 0.3);
-    float drip = max(0.0, sin(gUv.x * 30.0 + n * 4.0)) * pow(p, 1.5) * uSize * 0.8;
-    float2 duv_g = gUv + float2(0.0, drip * (1.0 - melt));
+    float4 src = samp(uv0.xy);
+    if (p <= 0.001) return src;
+    
+    float l = lum(src.rgb);
+    float turb = max(uSpread, 0.01);
+    float n = fbm(gUv * (4.0 + turb * 4.0));
+    
+    float threshold = p * 1.35;
+    float meltVal = l * 0.6 + n * 0.4;
+    float melt = smoothstep(threshold - 0.15, threshold + 0.05, meltVal);
+    
+    float amt = max(uStrength, uSize);
+    float2 offset = float2(0.0, 0.0);
+    
+    if (uMode < 0.5) {
+        // 下へ垂れる (Down)
+        float drip = max(0.0, sin(gUv.x * 24.0 + n * 5.0)) * pow(p, 1.2) * amt * 0.35;
+        offset = float2(0.0, drip * (1.0 - melt));
+    } else {
+        // 放射に溶ける (Radial)
+        float2 dir = normalize(gUv - 0.5 + 1e-5);
+        float a = atan2(dir.y, dir.x);
+        float drip = max(0.0, sin(a * 12.0 + n * 5.0)) * pow(p, 1.2) * amt * 0.35;
+        offset = dir * (drip * (1.0 - melt));
+    }
+    
+    float2 duv_g = gUv + offset;
     float2 delta = duv_g - gUv;
     float4 meltedCol = samp(uv0.xy + delta);
-    float edge = smoothstep(0.0, 0.06, abs(melt - 0.5));
-    float3 glow = float3(uColorR, uColorG, uColorB) * (1.0 - edge) * uStrength * 2.0;
-    return float4(lerp(meltedCol.rgb, float3(0, 0, 0), (1.0 - melt) * uStrength) + glow, col.a * melt);
+    
+    float edge = smoothstep(0.0, 0.08, abs(melt - 0.5));
+    float edgeGlow = (1.0 - edge) * (1.0 - p);
+    float3 meltColor = float3(uColorR, uColorG, uColorB);
+    
+    float3 col = lerp(meltColor, meltedCol.rgb, melt);
+    col += meltColor * edgeGlow * amt * 1.2;
+    float alpha = meltedCol.a * melt;
+    
+    return float4(col, alpha);
 }

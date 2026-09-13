@@ -57,18 +57,29 @@ float3 hsv2rgb(float3 c) {
     return c.z * lerp(1, saturate(p-1), c.y);
 }
 
+float2 WrapMirror(float2 uv) {
+    return abs(frac(uv * 0.5 + 0.5) * 2.0 - 1.0);
+}
+
 float4 main(float4 pos:SV_POSITION, float4 posScene:SCENE_POSITION, float4 uv0:TEXCOORD0):SV_Target {
     float2 gUv = GetGlobalUV(posScene, uBounds, uv0.xy);
     float aspect = (uBounds.z <= 1.0 || uBounds.w <= 1.0) ? 1.0 : (uBounds.z / uBounds.w);
-    float2 p = (gUv - 0.5) * float2(aspect, 1.0);
+    
+    float2 center = float2(uAngle, uSpread);
+    float2 p = (gUv - center) * float2(aspect, 1.0);
     float r = length(p);
-    float a = atan2(p.y, p.x) + uTime * uSpeed * 0.2 + uAngle;
-    float seg = 6.2831853 / max(uCount, 2.0);
-    a = abs(fmod(a, seg) - seg * 0.5);
-    float2 kuv_g = float2(cos(a), sin(a)) * r * uSize / float2(aspect, 1.0) + 0.5;
+    
+    float a = atan2(p.y, p.x) + uTime * uSpeed * 1.5;
+    float slices = max(uCount, 2.0);
+    float seg = 6.28318530718 / slices;
+    a = abs(fmod(abs(a), seg) - seg * 0.5);
+    
+    float zoom = max(uSize, 0.001);
+    float2 kuv_g = float2(cos(a), sin(a)) * (r / zoom) / float2(aspect, 1.0) + center;
     float2 delta = kuv_g - gUv;
     float2 kuv = uv0.xy + delta;
-    float4 col = samp(kuv);
-    col.rgb = lerp(samp(uv0.xy).rgb, col.rgb, uStrength);
-    return col;
+    
+    float4 col = samp(WrapMirror(kuv));
+    float4 src = samp(uv0.xy);
+    return lerp(src, col, saturate(uStrength));
 }

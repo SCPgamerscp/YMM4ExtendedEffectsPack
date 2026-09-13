@@ -59,7 +59,7 @@ public sealed class MatrixRainEffect : VideoEffectBase, IPackBindable
     {
         var f = d.ItemPosition.Frame; var len = d.ItemDuration.Frame; var fps = d.FPS;
         return new PackUniforms {
-            Strength = 0f,
+            Strength = 1f,
             Size = (float)GlyphSize.GetValue(f, len, fps),
             Speed = (float)FallSpeed.GetValue(f, len, fps),
             Angle = 0f,

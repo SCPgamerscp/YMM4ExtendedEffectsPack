@@ -76,7 +76,7 @@ public sealed class PixelateEffect : VideoEffectBase, IPackBindable
     {
         var f = d.ItemPosition.Frame; var len = d.ItemDuration.Frame; var fps = d.FPS;
         return new PackUniforms {
-            Strength = 0f,
+            Strength = 1f,
             Size = (float)PixelSize.GetValue(f, len, fps),
             Speed = 0f,
             Angle = 0f,
