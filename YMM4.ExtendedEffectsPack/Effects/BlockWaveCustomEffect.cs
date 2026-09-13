@@ -28,15 +28,18 @@ internal sealed class BlockWaveCustomEffect : D2D1CustomShaderEffectBase, IPackS
             base.SetDrawInfo(drawInfo);
             drawInfo.SetPixelShader(GUID_PixelShader, PixelOptions.None);
         }
-        public override void MapInputRectsToOutputRect(RawRect[] inputRects, RawRect[] inputOpaqueSubRects, out RawRect outputRect, out RawRect outputOpaqueSubRect)
+                public override void MapInputRectsToOutputRect(RawRect[] inputRects, RawRect[] inputOpaqueSubRects, out RawRect outputRect, out RawRect outputOpaqueSubRect)
         {
             base.MapInputRectsToOutputRect(inputRects, inputOpaqueSubRects, out outputRect, out outputOpaqueSubRect);
+            if (inputRects.Length > 0)
+            {
+                inputRect = inputRects[0];
+            }
             UpdateConstants();
         }
         public override void MapOutputRectToInputRects(RawRect outputRect, RawRect[] inputRects)
         {
-            int margin = (int)System.Math.Ceiling(System.Math.Max(_cb.Strength * 0.5f, 32f));
-            inputRects[0] = new RawRect(outputRect.Left - margin, outputRect.Top - margin, outputRect.Right + margin, outputRect.Bottom + margin);
+            inputRects[0] = inputRect;
         }
         [CustomEffectProperty(PropertyType.Float, 0)] public float Strength { get => _cb.Strength; set { _cb.Strength = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 1)] public float Size { get => _cb.Size; set { _cb.Size = value; UpdateConstants(); } }

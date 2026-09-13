@@ -28,21 +28,18 @@ internal sealed class GlitchShiftCustomEffect : D2D1CustomShaderEffectBase, IPac
             base.SetDrawInfo(drawInfo);
             drawInfo.SetPixelShader(GUID_PixelShader, PixelOptions.None);
         }
-        public override void MapInputRectsToOutputRect(RawRect[] inputRects, RawRect[] inputOpaqueSubRects, out RawRect outputRect, out RawRect outputOpaqueSubRect)
+                public override void MapInputRectsToOutputRect(RawRect[] inputRects, RawRect[] inputOpaqueSubRects, out RawRect outputRect, out RawRect outputOpaqueSubRect)
         {
             base.MapInputRectsToOutputRect(inputRects, inputOpaqueSubRects, out outputRect, out outputOpaqueSubRect);
+            if (inputRects.Length > 0)
+            {
+                inputRect = inputRects[0];
+            }
             UpdateConstants();
         }
         public override void MapOutputRectToInputRects(RawRect outputRect, RawRect[] inputRects)
         {
-            int left = inputRect.Left;
-            int right = inputRect.Right;
-            if (left >= right)
-            {
-                left = outputRect.Left;
-                right = outputRect.Right;
-            }
-            inputRects[0] = new RawRect(left, outputRect.Top, right, outputRect.Bottom);
+            inputRects[0] = inputRect;
         }
         [CustomEffectProperty(PropertyType.Float, 0)] public float Strength { get => _cb.Strength; set { _cb.Strength = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 1)] public float Size { get => _cb.Size; set { _cb.Size = value; UpdateConstants(); } }

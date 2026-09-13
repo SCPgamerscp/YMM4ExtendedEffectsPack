@@ -28,10 +28,18 @@ internal sealed class SpeedLinesCustomEffect : D2D1CustomShaderEffectBase, IPack
             base.SetDrawInfo(drawInfo);
             drawInfo.SetPixelShader(GUID_PixelShader, PixelOptions.None);
         }
-        public override void MapInputRectsToOutputRect(RawRect[] inputRects, RawRect[] inputOpaqueSubRects, out RawRect outputRect, out RawRect outputOpaqueSubRect)
+                public override void MapInputRectsToOutputRect(RawRect[] inputRects, RawRect[] inputOpaqueSubRects, out RawRect outputRect, out RawRect outputOpaqueSubRect)
         {
             base.MapInputRectsToOutputRect(inputRects, inputOpaqueSubRects, out outputRect, out outputOpaqueSubRect);
+            if (inputRects.Length > 0)
+            {
+                inputRect = inputRects[0];
+            }
             UpdateConstants();
+        }
+        public override void MapOutputRectToInputRects(RawRect outputRect, RawRect[] inputRects)
+        {
+            inputRects[0] = inputRect;
         }
         [CustomEffectProperty(PropertyType.Float, 0)] public float Strength { get => _cb.Strength; set { _cb.Strength = value; UpdateConstants(); } }
         [CustomEffectProperty(PropertyType.Float, 1)] public float Size { get => _cb.Size; set { _cb.Size = value; UpdateConstants(); } }
