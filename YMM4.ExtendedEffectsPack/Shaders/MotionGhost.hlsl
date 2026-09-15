@@ -24,6 +24,8 @@ cbuffer Constants : register(b0)
 };
 
 float2 GetGlobalUV(float4 posScene, float4 bounds, float2 fallbackUv) {
+    if (bounds.z > 1.0 && bounds.w > 1.0)
+        return (posScene.xy - bounds.xy) / bounds.zw;
     return fallbackUv;
 }
 
